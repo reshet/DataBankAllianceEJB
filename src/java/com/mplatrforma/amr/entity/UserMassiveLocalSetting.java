@@ -62,7 +62,7 @@ public class UserMassiveLocalSetting implements Serializable{
     @GeneratedValue(strategy= GenerationType.AUTO)
     private Integer id;
     
-    private Integer research_id;
+    private Long research_id;
     private Integer weights_use = 0;
     private Integer filters_use = 0;
     private ArrayList<String> filters = new ArrayList<String>();
@@ -76,6 +76,7 @@ public class UserMassiveLocalSetting implements Serializable{
 	  //accountType = "defaultUser";
   }
    public UserMassiveLocalSetting(UserResearchSettingDTO dto) {
+       this.research_id = dto.getResearh().getID();
        this.setFilters(dto.getFilters());
        this.setFilters_usage(dto.getFilters_usage());
        this.setFilters_use(dto.getFilters_use());
@@ -83,8 +84,10 @@ public class UserMassiveLocalSetting implements Serializable{
        this.setWeights_var_id(dto.getWeights_var_id());
 	  //accountType = "defaultUser";
   }
-   public UserResearchSettingDTO toDTO() {
+   public UserResearchSettingDTO toDTO(EntityManager emm) {
        UserResearchSettingDTO dto = new UserResearchSettingDTO();
+       SocioResearch res = emm.find(SocioResearch.class, research_id); 
+       if(res!=null)dto.setResearh(res.toDTO());
        dto.setFilters(getFilters());
        dto.setFilters_usage(getFilters_usage());
        dto.setFilters_use(getFilters_use());
@@ -166,14 +169,14 @@ public void setFilters(ArrayList<String> filters) {
     /**
      * @return the research_id
      */
-    public Integer getResearch_id() {
+    public Long getResearch_id() {
         return research_id;
     }
 
     /**
      * @param research_id the research_id to set
      */
-    public void setResearch_id(Integer research_id) {
+    public void setResearch_id(Long research_id) {
         this.research_id = research_id;
     }
 

@@ -9,17 +9,20 @@
             <name>DatabankEnterpriseAlliance-ejb</name>
             <minimum-ant-version>1.6.5</minimum-ant-version>
             <included-library dirs="200">file.reference.jline-0.9.94.jar-1</included-library>
-            <included-library dirs="200">file.reference.jna-3.2.7.jar-1</included-library>
-            <included-library dirs="200">file.reference.log4j-1.2.16.jar-1</included-library>
             <included-library dirs="200">file.reference.org.opendatafoundation.data.jar-1</included-library>
-            <included-library dirs="200">file.reference.lucene-analyzers-3.6.0.jar</included-library>
-            <included-library dirs="200">file.reference.lucene-core-3.6.0.jar</included-library>
-            <included-library dirs="200">file.reference.lucene-highlighter-3.6.0.jar</included-library>
-            <included-library dirs="200">file.reference.lucene-memory-3.6.0.jar</included-library>
-            <included-library dirs="200">file.reference.lucene-queries-3.6.0.jar</included-library>
             <included-library dirs="200">file.reference.org.opendatafoundation.data.mod.jar-1</included-library>
             <included-library dirs="200">file.reference.juniversalchardet-1.0.3.jar</included-library>
-            <included-library dirs="200">file.reference.elasticsearch-0.19.4.jar</included-library>
+            <included-library dirs="200">file.reference.argo-3.2.jar</included-library>
+            <included-library dirs="200">file.reference.elasticsearch-0.20.4.jar</included-library>
+            <included-library dirs="200">file.reference.log4j-1.2.17.jar</included-library>
+            <included-library dirs="200">file.reference.json-lib-2.4-jdk15.jar</included-library>
+            <included-library dirs="200">file.reference.lucene-analyzers-3.6.2.jar</included-library>
+            <included-library dirs="200">file.reference.lucene-core-3.6.2.jar</included-library>
+            <included-library dirs="200">file.reference.lucene-highlighter-3.6.2.jar</included-library>
+            <included-library dirs="200">file.reference.lucene-memory-3.6.2.jar</included-library>
+            <included-library dirs="200">file.reference.lucene-queries-3.6.2.jar</included-library>
+            <included-library dirs="200">file.reference.snappy-java-1.0.4.1.jar</included-library>
+            <included-library dirs="200">file.reference.spatial4j-0.3.jar</included-library>
             <source-roots>
                 <root id="src.dir"/>
             </source-roots>

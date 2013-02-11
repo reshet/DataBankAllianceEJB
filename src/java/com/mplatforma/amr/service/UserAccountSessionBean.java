@@ -26,13 +26,16 @@ import javax.persistence.PersistenceContext;
 @Stateless(mappedName="UserAccountRemoteBean",name="UserAccountRemoteBean")
 public class UserAccountSessionBean implements UserAccountBeanRemote{
 
-    
+     //    (mappedName="UserSocioResearchRemoteBean",
+        //    lookup="java:global/DatabankEnterprise-ejb/UserSocioResearchRemoteBean") 
     
     @PersistenceContext
     private EntityManager em;
     
-    @EJB AdminPubBeanRemote pubbean;
-    @EJB UserSocioResearchSessionBean userbean;
+    @EJB 
+    private AdminPubBeanRemote pubbean;
+//    @EJB
+//    private UserSocioResearchSessionBean userbean;
    
     public static String PUBLICATION_TOPIC="topic";
     public static String CONSULTATION_TOPIC="topic";
@@ -55,9 +58,9 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
         new UserAccount(em).createDefaults();
         createDefaultDatabankStructure();
         createDefaultDatabankVarStructure();
-        createDefaultDatabankLawStructure();
+        //createDefaultDatabankLawStructure();
         createDefaultDatabankPubStructure();
-        createDefaultDatabankJuryStructure();
+        //createDefaultDatabankJuryStructure();
         createDefaultStartPage();
     }
      private void createDefaultDatabankStructure()
@@ -379,45 +382,65 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
     }
 
     @Override
-    public UserHistoryDTO getUserResearchHistory(long user_id) {
+    public UserHistoryDTO getUserResearchHistory(long user_id,long research_id) {
         //throw new UnsupportedOperationException("Not supported yet.");
-         return UserAccount.toHistoryDTO(new UserAccount(em).getUserAccountUnsafe(user_id));
+         return UserAccount.toHistoryDTO(new UserAccount(em).getUserAccountUnsafe(user_id),research_id,em);
     }
     @Override
     public List<SocioResearchDTO_Light> getUserMyResearches(long user_id) {
         List<SocioResearchDTO_Light> lst = new ArrayList<SocioResearchDTO_Light>();
-       List<UserMassiveLocalSetting> list = new UserAccount(em).getUserAccountUnsafe(user_id).getHistory().getLocal_research_settings();
-       for(UserMassiveLocalSetting setting:list)
-       {
-           long id = setting.getResearch_id();
-           SocioResearchDTO dto = userbean.getResearch(id);
-           SocioResearchDTO_Light ll = new SocioResearchDTO_Light(id, dto.getName());
-           lst.add(ll);
-       }
+         UserAccount acc = new UserAccount(em).getUserAccountUnsafe(user_id);
+         if(acc!=null)
+         {
+             List<UserMassiveLocalSetting> list = acc.getHistory().getLocal_research_settings();
+            for(UserMassiveLocalSetting setting:list)
+            {
+                long id = setting.getResearch_id();
+                    SocioResearch res = em.find(SocioResearch.class, id);
+                    if(res!=null)
+                    {
+                            SocioResearchDTO dto =  res.toDTO();
+                        //SocioResearchDTO dto = userbean.getResearch(id);
+                        SocioResearchDTO_Light ll = new SocioResearchDTO_Light(id, dto.getName());
+                        lst.add(ll);     
+                    }
+               
+            }
+         }
+       
         return lst;  
     }
 
     @Override
     public void addToSelectedResearches(UserResearchSettingDTO dto,long user_id) {
+          UserAccount acc = new UserAccount(em).getUserAccountUnsafe(user_id);
+         if(acc!=null)
+         {
+            RegisteredUserHistory hist = acc.getHistory();
+            if(hist!= null)
+            {
+                UserMassiveLocalSetting setting = new UserMassiveLocalSetting(dto);
+                hist.getLocal_research_settings().add(setting);
+                em.persist(hist);
+            }
+         }
         
-        RegisteredUserHistory hist = new UserAccount(em).getUserAccountUnsafe(user_id).getHistory();
-        if(hist!= null)
-        {
-            UserMassiveLocalSetting setting = new UserMassiveLocalSetting(dto);
-            hist.getLocal_research_settings().add(setting);
-            em.persist(hist);
-        }
     }
 
     @Override
     public List<UserAnalysisSaveDTO> getUserAllAnalisys(long user_id) {
          List<UserAnalysisSaveDTO> lst = new ArrayList<UserAnalysisSaveDTO>();
-            RegisteredUserAnalysisRoot anal_root = new UserAccount(em).getUserAccountUnsafe(user_id).getAnalysis();
-      List<UserMassiveLocalAnalisys> list = anal_root.getLocal_research_analisys();
-      for(UserMassiveLocalAnalisys anal:list)
-      {
-          lst.add(anal.toDTO());
-      }
+         UserAccount acc = new UserAccount(em).getUserAccountUnsafe(user_id);
+         if(acc!=null)
+         {
+                RegisteredUserAnalysisRoot anal_root = acc.getAnalysis();
+                List<UserMassiveLocalAnalisys> list = anal_root.getLocal_research_analisys();
+                for(UserMassiveLocalAnalisys anal:list)
+                {
+                    lst.add(anal.toDTO(em));
+                }
+         }
+      
         return lst;
     }
 
@@ -430,21 +453,31 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
 
     @Override
     public void saveResearchAnalisys(UserAnalysisSaveDTO dto,long user_id) {
-        UserMassiveLocalAnalisys anal = new UserMassiveLocalAnalisys(dto);
-         RegisteredUserAnalysisRoot anal_root = new UserAccount(em).getUserAccountUnsafe(user_id).getAnalysis();
-        anal_root.getLocal_research_analisys().add(anal);
-        em.persist(anal_root);
+        UserMassiveLocalAnalisys anal = new UserMassiveLocalAnalisys(dto,em);
+         UserAccount acc = new UserAccount(em).getUserAccountUnsafe(user_id);
+         if(acc!=null)
+         {
+            RegisteredUserAnalysisRoot anal_root = acc.getAnalysis();
+            anal_root.getLocal_research_analisys().add(anal);
+            em.persist(anal_root);
+         }
     }
 
     @Override
     public UserResearchSettingDTO getUserResearchSetting(Long id, long user_id) {
-        List<UserMassiveLocalSetting> list = new UserAccount(em).getUserAccountUnsafe(user_id).getHistory().getLocal_research_settings();
-       for(UserMassiveLocalSetting sett:list)
+        UserAccount acc = new UserAccount(em).getUserAccountUnsafe(user_id);
+       if (acc!=null)
        {
-           if(sett.getResearch_id().equals(id)){
-               return sett.toDTO();
-           }
+        List<UserMassiveLocalSetting> list = acc.getHistory().getLocal_research_settings();
+      
+        for(UserMassiveLocalSetting sett:list)
+        {
+            if(sett.getResearch_id().equals(id)){
+                return sett.toDTO(em);
+            }
+        }
        }
+       
        return null;
        // throw new UnsupportedOperationException("Not supported yet.");
     }

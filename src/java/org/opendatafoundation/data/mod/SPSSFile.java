@@ -1476,7 +1476,7 @@ public class SPSSFile
                     s = new String(buffer);
                 }
             }
-            Logger.getLogger(SPSSFile.class.getName()).log(Level.INFO, "String read: {0}", s);
+            //Logger.getLogger(SPSSFile.class.getName()).log(Level.INFO, "String read: {0}", s);
 
         } catch (NegativeArraySizeException ex)
         {

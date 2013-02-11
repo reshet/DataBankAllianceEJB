@@ -4,8 +4,7 @@
  */
 package com.mplatforma.amr.service;
 
-import com.mplatforma.amr.service.remote.UserAccountBeanRemote;
-import org.elasticsearch.index.query.QueryBuilder;
+
 import com.mplatforma.amr.service.remote.UserSocioResearchBeanRemote;
 import com.mplatrforma.amr.entity.*;
 import com.mresearch.databank.shared.*;
@@ -14,7 +13,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import javax.ejb.EJB;
 import javax.ejb.Stateless;
 import javax.jws.WebService;
 import javax.persistence.EntityManager;
@@ -30,6 +28,7 @@ import org.elasticsearch.common.transport.InetSocketTransportAddress;
 import static org.elasticsearch.index.query.FilterBuilders.*;
 import static org.elasticsearch.index.query.QueryBuilders.*;
 import static org.elasticsearch.common.xcontent.XContentFactory.*;
+import org.elasticsearch.index.query.QueryBuilder;
 import static org.elasticsearch.node.NodeBuilder.*;
 import org.elasticsearch.node.Node;
 
@@ -41,8 +40,9 @@ import org.elasticsearch.node.Node;
 @Stateless(mappedName="UserSocioResearchRemoteBean",name="UserSocioResearchRemoteBean")
 public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote{
     @PersistenceContext
-    private EntityManager em;
-    @EJB UserAccountBeanRemote useracc; 
+    private EntityManager em; 
+    //@EJB 
+    //private UserAccountBeanRemote useracc; 
     @Override
     public SocioResearchDTO getResearch(long id) {
         
@@ -69,7 +69,8 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
          if(dto.getId()!= 0 && dto.getCurrent_research() == 0)
          {
              dto.setCurrent_research(v.getResearch_id());
-             useracc.updateAccountResearchState(dto);
+            //TODO s
+             // useracc.updateAccountResearchState(dto);
          }
          
         return v.toDTO_Detailed(dto,em);
@@ -320,7 +321,7 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
     @PostConstruct
     private void init()
     {
-        node = nodeBuilder().clusterName("elasticsearch_DataBankPrj_Cluster").client(true).node();
+        node = nodeBuilder().clusterName("elasticsearch_"+AdminSocioResearchMDB.INDEX_NAME+"_Prj_Cluster").client(true).node();
     }
     
     @PreDestroy
@@ -359,7 +360,7 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
 //                .addTransportAddress(new InetSocketTransportAddress("localhost", 9300));
 
             
-            SearchResponse response = client.prepareSearch("databank").setTypes(types_to_search)
+            SearchResponse response = client.prepareSearch("databankalliance").setTypes(types_to_search)
                 .setSearchType(SearchType.DFS_QUERY_THEN_FETCH)
                 .setQuery(json_query)
                 .setExplain(true)
@@ -388,7 +389,7 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
         catch(Exception ex)
         {
             ex.printStackTrace();
-            return "Error";
+            return "Error: "+ ex.getMessage();
         }
         finally{
           
@@ -805,6 +806,8 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
        }
         return map;
     }
+
+   
 
     
 }

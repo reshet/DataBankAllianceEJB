@@ -86,7 +86,7 @@ public void setFilters_usage(ArrayList<Integer> filters_usage) {
 	this.filters_usage = filters_usage;
 }
 
-public ArrayList<String> getFiltersToProcess(long research_id) {
+public ArrayList<String> getFiltersToProcess() {
     ArrayList<String> toProcess = new ArrayList<String>();
     int i = 0;
     for(Integer filter_use:filters_usage)
@@ -99,7 +99,7 @@ public ArrayList<String> getFiltersToProcess(long research_id) {
     }
     return toProcess;
 }
-public ArrayList<Long> getFiltersToProcessIndecies(long research_id) {
+public ArrayList<Long> getFiltersToProcessIndecies() {
     ArrayList<Long> toProcess = new ArrayList<Long>();
     int i = 0;
     for(Integer filter_use:filters_usage)

@@ -40,5 +40,6 @@ public interface UserSocioResearchBeanRemote {
       ArrayList<String> getEntityItemTaggedEntitiesIdentifiers(Long id_item);
       MetaUnitEntityItemDTO getEntityItemDTO(Long id);
       ArrayList<MetaUnitEntityItemDTO> getEntityItemSubitemsDTOs(Long id);
+    
       
 }

@@ -14,7 +14,7 @@ import java.util.List;
 public interface UserAccountBeanRemote {
 
     UserAccountDTO getUserAccount(String email, String password);
-    UserHistoryDTO getUserResearchHistory(long user_id);
+    UserHistoryDTO getUserResearchHistory(long user_id,long research_id);
     UserAccountDTO getDefaultUser();   
     UserAccountDTO updateAccountResearchState(UserAccountDTO dto);
     void initDefaults();

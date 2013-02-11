@@ -35,4 +35,8 @@ public interface AdminSocioResearchBeanRemote {
       void updateMetaUnitEntityItemLinks(Long item_id,ArrayList<Long> tagged_ids,String identifier);
       
       void setStartupContent(StartupBundleDTO dto);
+      
+      
+      ArrayList<VarDTO_Light> findVarsLikeThis(Long var_id,ComparativeSearchParamsDTO params);
+    
 }

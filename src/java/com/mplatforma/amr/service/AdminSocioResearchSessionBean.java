@@ -4,9 +4,14 @@
  */
 package com.mplatforma.amr.service;
 
+import argo.format.CompactJsonFormatter;
+import argo.format.JsonFormatter;
+import argo.format.PrettyJsonFormatter;
+import argo.jdom.*;
 import com.mplatforma.amr.service.remote.AdminSocioResearchBeanRemote;
 import com.mplatforma.amr.service.remote.RxStorageBeanRemote;
 import com.mplatforma.amr.service.remote.UserAccountBeanRemote;
+import com.mplatforma.amr.service.remote.UserSocioResearchBeanRemote;
 
 import com.mplatrforma.amr.entity.*;
 import com.mresearch.databank.jobs.*;
@@ -53,6 +58,11 @@ import org.opendatafoundation.data.mod.SPSSStringVariable;
 import org.opendatafoundation.data.mod.SPSSVariable;
 import org.w3c.dom.Document;
 
+import static argo.jdom.JsonNodeBuilders.*;
+import argo.saj.InvalidSyntaxException;
+import static argo.format.JsonNumberUtils.asBigDecimal;
+import java.math.BigDecimal;
+
 /**
  *
  * @author reshet
@@ -71,11 +81,17 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
          Locale.setDefault(locale);
           System.out.println("After setting, Locale is = " + locale);
     }
+    
+    private static final JsonFormatter JSON_FORMATTER = new CompactJsonFormatter();
+    private static final JdomParser JDOM_PARSER = new JdomParser();
     @PersistenceContext
     private EntityManager em;
     
     @EJB
     private RxStorageBeanRemote store;
+    
+    @EJB
+    private UserSocioResearchBeanRemote user_bean;
    
     public UserAccountDTO updateAccountResearchState(UserAccountDTO dto) {
         UserAccount account;
@@ -198,6 +214,8 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
               launchIndexingVar(rDTO);
               
               int bb = 2;
+              
+              findVarsLikeThis(rDTO.getId(), new ComparativeSearchParamsDTO());
             } catch (Exception e) {
               e.printStackTrace();
             } finally {
@@ -699,5 +717,159 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
         em.persist(d);
     }
     
+    
+     @Override
+    public ArrayList<VarDTO_Light> findVarsLikeThis(Long var_id, ComparativeSearchParamsDTO params) {
+         Var v = em.find(Var.class, var_id);
+         v.setEM(em);
+         VarDTO_Detailed dto =  v.toDTO_Detailed(null,em); 
+         ArrayList<Long> varids = doSearchLikewise(dto, params);
+         ArrayList<VarDTO_Light> lst = user_bean.getVarDTOs(varids);
+         return lst;
+     }
+     private ArrayList<String> cropSearchString(String str, int granularity)
+     {
+        ArrayList<String> strs = new ArrayList<String>();
+        
+        String [] arr = str.split(" "); 
+        for(int i = 0; i < arr.length;i+=granularity)
+        {
+            StringBuilder strb = new StringBuilder();
+            for(int j = i; j < i+granularity && j < arr.length;j++)
+            {
+                 strb.append(arr[j]);
+                 strb.append(" ");
+            }
+            strs.add(strb.toString());
+        }
+         //str.
+         return strs;
+     }
+     private String constructSearchLikewiseQuery(VarDTO_Detailed origin_var, ComparativeSearchParamsDTO params)
+     {
+        //here we compose first likewise search query
+         // simplest form - search for question
+         
+         String question_label = origin_var.getLabel();
+         ArrayList<String> sublabels = cropSearchString(question_label, 3);
+         
+         String query = "";
+        
+        
+        
+        //JSONObject obj_bool = new JSONObject();
+        //JSONObject obj_must = new JSONObject();
+        //JSONArray arr_must = new JSONArray();
+
+//        JsonObjectNodeBuilder builder = anObjectBuilder()
+//        .withField("name", aStringBuilder("Black Lace"))
+//        .withField("sales", aNumberBuilder("110921"))
+//        .withField("totalRoyalties", aNumberBuilder("10223.82"))
+//        .withField("singles", anArrayBuilder()
+//                .withElement(aStringBuilder("Superman"))
+//                .withElement(aStringBuilder("Agadoo"))
+//        );
+        
+       
+        
+        JsonArrayNodeBuilder arr_contains = anArrayBuilder();
+
+        //JSONObject obj_bool_contains_too = new JSONObject();
+        //JSONObject obj_contains_too = new JSONObject();
+        //JSONArray arr_contains_too = new JSONArray();
+
+
+
+        int index_c=0,index_c2=0,index_c3=0;
+        for(int i = 0; i < sublabels.size();i++)
+        {
+            JsonObjectNodeBuilder obj_b = anObjectBuilder()
+                .withField("text_phrase", anObjectBuilder()
+                    .withField("sociovar_name", anObjectBuilder()
+                        .withField("query", aStringBuilder(sublabels.get(i)))
+                     )
+               //     .withField("fuziness", aNumberBuilder("0.2"))
+                 );
+               // obj_b.put("text_phrase", obj_field_name);
+                arr_contains.withElement(obj_b);
+        }
+        
+        JsonObjectNodeBuilder obj_bool_contains = anObjectBuilder()
+                .withField("bool", anObjectBuilder()
+                    .withField("should", arr_contains)
+                );
+        
+        //JSONObject obj_bool_contains = new JSONObject();
+        //JsonObjectNodeBuilder obj_contains = anObjectBuilder();
+        
+
+      
+        //obj_contains_too.put("should", arr_contains_too);
+        //obj_bool_contains_too.put("bool", obj_contains_too);
+
+       
+        //if(arr_contains.size()>0)arr_must.set(0, obj_bool_contains);
+        //if(arr_contains_too.size()>0)arr_must.set(1, obj_bool_contains_too);
+       
+        //obj_must.put("must", arr_must);
+        //obj_bool.put("bool", obj_must);
+//	      String quer = obj_bool.toString();
+         JsonRootNode json = obj_bool_contains.build();
+         String str = json.toString();
+         query = JSON_FORMATTER.format(json);
+         //query = query.replaceAll("\\<.*?>","");
+         //query = query.replaceAll("<[^>]+>", "");
+         
+	 //query = json.toString();
+         return query;
+     }
+     
+     private ArrayList<Long> doParseLikewiseSearchResult(VarDTO_Detailed origin_var, ComparativeSearchParamsDTO params,String result)
+     {  
+         ArrayList<Long> var_ids = new ArrayList<Long>();
+        
+        try {
+            JsonRootNode res = JDOM_PARSER.parse(result);
+            JsonNode hits = res.getNode("hits");
+            List<JsonNode> hiters = hits.getArrayNode("hits");
+            
+            //JSONObject res = JSONObject.fromObject(result);
+           // JSONObject res = (JSONObject)JSONParser.parse(result);
+            //JSONObject hits = (JSONObject)res.get("hits");
+            //JSONObject total = hits.get("total");
+            
+            BigDecimal totalRoyalties = asBigDecimal(hits.getNumberValue("total"));
+            Integer tot = totalRoyalties.intValue();
+            
+            //JSONArray hits_arr = (JSONArray)hits.getJSONArray("hits");
+           // if(hiters.isEmpty())
+           // {
+                        //display.getCenterPanel().clear();
+                        //display.getCenterPanel().add(new HTML("<H2>По вашему запросу ничего не найдено. Попробуйте изменить параметры поиска</H2>"));
+                    //return;
+           // }
+            for (int i = 0; i < hiters.size(); i++)
+            {
+                JsonNode hit = (JsonNode)hiters.get(i);
+                BigDecimal varid = asBigDecimal(hit.getNode("_source").getNumberValue("sociovar_ID"));
+                Long ivarid = varid.longValue();
+                var_ids.add(ivarid);
+            }
+
+            
+        } catch (InvalidSyntaxException ex) {
+            Logger.getLogger(AdminSocioResearchSessionBean.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return var_ids;
+     }
+     
+     private ArrayList<Long> doSearchLikewise(VarDTO_Detailed origin_var, ComparativeSearchParamsDTO params)
+     {
+        String query = constructSearchLikewiseQuery(origin_var, params); 
+        String [] types = new String[]{"sociovar"};
+         String result = user_bean.doIndexSearch(query, types);
+        ArrayList<Long> var_ids = doParseLikewiseSearchResult(origin_var, params, result);
+        return var_ids;   
+     } 
     
 }

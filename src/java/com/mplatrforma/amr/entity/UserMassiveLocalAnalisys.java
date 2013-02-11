@@ -25,6 +25,7 @@ import com.mresearch.databank.shared.UserAccountDTO;
 import com.mresearch.databank.shared.UserAnalysisSaveDTO;
 import com.mresearch.databank.shared.UserHistoryDTO;
 import java.io.Serializable;
+import java.util.Date;
 import javax.ejb.Stateless;
 import javax.persistence.*;
 
@@ -56,6 +57,12 @@ public class UserMassiveLocalAnalisys implements Serializable{
     private UserMassiveLocalSetting setting;
     private ArrayList<Double> distribution;
     private String distr_type;
+    private String name;
+    private String comment;
+     @Temporal(TemporalType.TIMESTAMP)
+    private Date date_saved;
+    
+    
    
     @ManyToOne
     private Var var_involved_first;
@@ -68,9 +75,23 @@ public class UserMassiveLocalAnalisys implements Serializable{
   public UserMassiveLocalAnalisys() {
 	  //accountType = "defaultUser";
   }
-    public UserMassiveLocalAnalisys(UserAnalysisSaveDTO dto) {
+    public UserMassiveLocalAnalisys(UserAnalysisSaveDTO dto,EntityManager em) {
         setting = new UserMassiveLocalSetting(dto.getSeting());
         distribution = dto.getDistribution();
+        distr_type = dto.getDistr_type();
+        name = dto.getName();
+        if(dto.getVar_1()!=null)
+        {
+            long var_id_1 = dto.getVar_1().getId();
+            Var v1 = em.find(Var.class, var_id_1);
+            var_involved_first = v1;
+        }
+        
+        if(dto.getVar_2()!=null){
+            long var_id_2 = dto.getVar_2().getId();
+            Var v2 = em.find(Var.class, var_id_2);
+             var_involved_second = v2;
+        }
        // var_involved_first = 
 	  //accountType = "defaultUser";
   }
@@ -79,13 +100,16 @@ public class UserMassiveLocalAnalisys implements Serializable{
           this.em = emm;
   }
   
-  public UserAnalysisSaveDTO toDTO()
+  public UserAnalysisSaveDTO toDTO(EntityManager em)
   {
       UserAnalysisSaveDTO dto = new UserAnalysisSaveDTO();
       dto.setId(id);
       dto.setDistribution(distribution);
-      dto.setVar_1(var_involved_first.toDTO_DetailedNoCalc(em));
-      dto.setVar_2(var_involved_second.toDTO_DetailedNoCalc(em));
+      dto.setDistr_type(distr_type);
+      dto.setSeting(setting.toDTO(em));
+      dto.setName(name);
+      if(var_involved_first != null)dto.setVar_1(var_involved_first.toDTO_DetailedNoCalc(em));
+      if(var_involved_second != null)dto.setVar_2(var_involved_second.toDTO_DetailedNoCalc(em));
       
       return dto;
   }

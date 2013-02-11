@@ -23,7 +23,9 @@ import java.util.ArrayList;
 
 import com.mresearch.databank.shared.UserAccountDTO;
 import com.mresearch.databank.shared.UserHistoryDTO;
+import com.mresearch.databank.shared.UserResearchSettingDTO;
 import java.io.Serializable;
+import java.util.List;
 import javax.ejb.Stateless;
 import javax.persistence.*;
 
@@ -48,7 +50,7 @@ public class UserAccount implements Serializable{
     
     @Id
     @GeneratedValue(strategy= GenerationType.AUTO)
-    private String id;
+    private Long id;
     private String name;
     private String emailAddress;
     private String password;
@@ -100,6 +102,7 @@ public class UserAccount implements Serializable{
   public UserAccount getUserAccountUnsafe(Long id)
   {
        UserAccount account=null;
+        if(!id.equals(0))
 	try
 	{
 		account = em.find(UserAccount.class, id);
@@ -330,7 +333,7 @@ public class UserAccount implements Serializable{
     this.emailAddress = emailAddress;
   }
 
-  public String getId() {
+  public Long getId() {
     return id;
   }
 
@@ -355,7 +358,8 @@ public class UserAccount implements Serializable{
       return null;
     }
     UserAccountDTO dto = new UserAccountDTO(user.getEmailAddress(), user.getName(), user.getAccountType());
-  //  dto.setFilters(user.history.getFilters());
+    dto.setId(user.getId());
+    //  dto.setFilters(user.history.getFilters());
   //  dto.setWeights_use(user.history.getWeights_use());
   //  dto.setFilters_use(user.history.getFilters_use());
   //  dto.setFilters_usage(user.history.getFilters_usage());
@@ -363,11 +367,29 @@ public class UserAccount implements Serializable{
   //  dto.setFilters_categories(user.history.getFilters_categories());
     return dto;
   }
-  public static UserHistoryDTO toHistoryDTO(UserAccount user) {
+  public static UserHistoryDTO toHistoryDTO(UserAccount user,long research_id,EntityManager em) {
     if (user == null) {
       return null;
     }
     UserHistoryDTO dto = new UserHistoryDTO();
+    UserResearchSettingDTO setting = new UserResearchSettingDTO();
+    //long research_id = user.getHistory().updateAccountResearchState(dto);
+    SocioResearch res = em.find(SocioResearch.class, research_id);
+    setting.setResearh(res.toDTO());
+    List<UserMassiveLocalSetting> lst = user.history.getLocal_research_settings();
+    for(UserMassiveLocalSetting st:lst)
+    {
+        if(st.getResearch_id().equals(research_id))
+        {
+            setting.setFilters(st.getFilters());
+            setting.setWeights_use(st.getWeights_use());
+            setting.setFilters_use(st.getFilters_use());
+            setting.setFilters_usage(st.getFilters_usage());
+            setting.setWeights_var_id(st.getWeights_var_id());
+            break;
+        }
+    }
+    dto.setCurrent_research(setting);
 //    dto.setFilters(user.history.getFilters());
 //    dto.setWeights_use(user.history.getWeights_use());
 //    dto.setFilters_use(user.history.getFilters_use());
