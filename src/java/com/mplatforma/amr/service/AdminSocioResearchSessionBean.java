@@ -215,7 +215,7 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
               
               int bb = 2;
               
-              findVarsLikeThis(rDTO.getId(), new ComparativeSearchParamsDTO());
+              //findVarsLikeThis(rDTO.getId(), new ComparativeSearchParamsDTO());
             } catch (Exception e) {
               e.printStackTrace();
             } finally {
@@ -724,7 +724,8 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
          v.setEM(em);
          VarDTO_Detailed dto =  v.toDTO_Detailed(null,em); 
          ArrayList<Long> varids = doSearchLikewise(dto, params);
-         ArrayList<VarDTO_Light> lst = user_bean.getVarDTOs(varids);
+         ArrayList<VarDTO_Light> lst = new ArrayList<VarDTO_Light>();
+         if(varids.size()>0) lst = user_bean.getVarDTOs(varids);
          return lst;
      }
      private ArrayList<String> cropSearchString(String str, int granularity)
@@ -867,9 +868,27 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
      {
         String query = constructSearchLikewiseQuery(origin_var, params); 
         String [] types = new String[]{"sociovar"};
-         String result = user_bean.doIndexSearch(query, types);
+        String result = user_bean.doIndexSearch(query, types);
         ArrayList<Long> var_ids = doParseLikewiseSearchResult(origin_var, params, result);
         return var_ids;   
-     } 
+     }
+
+    @Override
+    public void generalizeVars(ArrayList<Long> gen_var_ids) {
+        
+        
+         try {
+             for(Long var_id:gen_var_ids)
+             {
+                Var dsVar = em.find(Var.class, var_id);
+                ArrayList<Long> other = new ArrayList<Long>();
+                for(Long vid:gen_var_ids)if(vid.equals(var_id))other.add(vid);
+                dsVar.setGeneralized_var_ids(other);
+                em.persist(dsVar);
+             }
+	    } finally {
+	    }
+        //throw new UnsupportedOperationException("Not supported yet.");
+    }
     
 }

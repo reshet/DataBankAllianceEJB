@@ -14,6 +14,7 @@ public interface AdminSocioResearchBeanRemote {
       SocioResearchDTO updateResearchGrouped(SocioResearchDTO research);
 
       VarDTO_Detailed generalizeVar(long var_id, ArrayList<Long> gen_var_ids,UserAccountDTO dto);
+      void generalizeVars(ArrayList<Long> gen_var_ids);
 
       long parseSPSS(long blobkey, long length);
 

@@ -7,7 +7,7 @@ import javax.persistence.metamodel.MapAttribute;
 import javax.persistence.metamodel.SingularAttribute;
 import javax.persistence.metamodel.StaticMetamodel;
 
-@Generated(value="EclipseLink-2.3.0.v20110604-r9504", date="2013-02-11T12:45:05")
+@Generated(value="EclipseLink-2.3.0.v20110604-r9504", date="2013-02-20T16:03:51")
 @StaticMetamodel(DatabankStructure.class)
 public class DatabankStructure_ { 
 
