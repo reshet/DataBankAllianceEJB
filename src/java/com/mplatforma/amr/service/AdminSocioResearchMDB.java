@@ -86,7 +86,7 @@ public class AdminSocioResearchMDB implements MessageListener {
                     perform_indexing(job.getId_Research());
                 } else if (obj instanceof IndexVarJob) {
                     IndexVarJob job = (IndexVarJob) obj;
-                    VarDTO dto = U_bean.getVar(job.getId_Var(), null);
+                    VarDTO dto = U_bean.getVar(job.getId_Var(), null,null);
                     perform_indexing_var(dto);
                 } else if (obj instanceof IndexVarJobFast) {
                     IndexVarJobFast job = (IndexVarJobFast) obj;
@@ -753,7 +753,7 @@ public class AdminSocioResearchMDB implements MessageListener {
             //var.setV_label_map(map);
             em.persist(var);
             var_id = var.getID();
-            VarDTO ddto = var.toDTO(null, em);
+            VarDTO ddto = var.toDTO(null,null, em);
             launchIndexingVarBULKED(ddto);
             //launchIndexingVar(var_id);
 //     }  catch (UnsupportedEncodingException ex) {

@@ -1,3 +1,4 @@
+
 /** 
  * Copyright 2010 Daniel Guermeur and Amy Unruh
  *
@@ -33,8 +34,8 @@ public class UserHistoryDTO implements Serializable {
 	private static final long serialVersionUID = 4066887588027126691L;
   private long id;
   
-  private UserResearchSettingDTO current_research;
-  private UserAnalysisSaveDTO currant_var;
+  private UserResearchSettingDTO current_research = new UserResearchSettingDTO();
+  private UserAnalysisSaveDTO currant_var = new UserAnalysisSaveDTO();
   
   
   public UserHistoryDTO() {

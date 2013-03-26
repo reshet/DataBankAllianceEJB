@@ -16,7 +16,9 @@ import javax.persistence.*;
 @Entity
 @NamedQueries({
     @NamedQuery(name = "Var.getResearchVarsLight", query = "SELECT NEW com.mresearch.databank.shared.VarDTO_Light(x.id, x.code, x.label) FROM Var x WHERE x.research_id = :id ORDER BY x.id"),
+    @NamedQuery(name = "Var.getResearchVarsWeightCandidates", query = "SELECT NEW com.mresearch.databank.shared.VarDTO_Light(x.id, x.code, x.label) FROM Var x WHERE x.research_id = :id AND x.var_type = 'REAL_VAR_TYPE' ORDER BY x.id"),
     @NamedQuery(name = "Var.getResearchVarsLightIN", query = "SELECT NEW com.mresearch.databank.shared.VarDTO_Light(x.id, x.code, x.label) FROM Var x WHERE x.id IN :idlist ORDER BY x.id"),
+    @NamedQuery(name = "Var.getResearchVarsLightIN_unordered", query = "SELECT NEW com.mresearch.databank.shared.VarDTO_Light(x.id, x.code, x.label) FROM Var x WHERE x.id IN :idlist"),
     @NamedQuery(name = "Var.deleteList", query = "DELETE FROM Var x WHERE x.research_id = :res_id"),
     @NamedQuery(name = "Var.getIDsList", query = "SELECT x.id FROM Var x WHERE x.research_id = :res_id ORDER BY x.id")
 })
@@ -64,6 +66,13 @@ public class Var {
         List<VarDTO_Light> l = q.getResultList();
         return new ArrayList<VarDTO_Light>(l);
     }
+        public static ArrayList<VarDTO_Light> getResearchVarsWeightCandidates(EntityManager em, long research_id) {
+
+        TypedQuery<VarDTO_Light> q = em.createNamedQuery("Var.getResearchVarsWeightCandidates", VarDTO_Light.class);
+        q.setParameter("id", research_id);
+        List<VarDTO_Light> l = q.getResultList();
+        return new ArrayList<VarDTO_Light>(l);
+    }
 
     public static ArrayList<VarDTO_Light> getResearchVarsLightDTOs(EntityManager em, ArrayList<Long> ids) {
 
@@ -72,7 +81,14 @@ public class Var {
         List<VarDTO_Light> l = q.getResultList();
         return new ArrayList<VarDTO_Light>(l);
     }
+    public static ArrayList<VarDTO_Light> getResearchVarsLightDTOsUnordered(EntityManager em, ArrayList<Long> ids) {
 
+        TypedQuery<VarDTO_Light> q = em.createNamedQuery("Var.getResearchVarsLightIN_unordered", VarDTO_Light.class);
+        q.setParameter("idlist", ids);
+        //q.set
+        List<VarDTO_Light> l = q.getResultList();
+        return new ArrayList<VarDTO_Light>(l);
+    }
     public static ArrayList<Long> getResearchVarsIDs(EntityManager em, Long id) {
 
         TypedQuery<Long> q = em.createNamedQuery("Var.getIDsList", Long.class);
@@ -153,7 +169,7 @@ public class Var {
         return dto;
     }
 
-    public VarDTO toDTO(UserAccountDTO watching_user, EntityManager em) {
+    public VarDTO toDTO(UserAccountDTO watching_user,UserHistoryDTO hist_dto,EntityManager em) {
         VarDTO dto = new VarDTO();
         dto.setCode(code);
         dto.setLabel(label);
@@ -163,7 +179,7 @@ public class Var {
         dto.setResearch_id(research_id);
         if (var_type.equals(VarDTO_Detailed.alt_var_type)) {
             if (watching_user != null) {
-                calcDistribution(null,watching_user, dto, em);
+                calcDistribution(hist_dto,watching_user, dto, em);
             } else {
                 dto.setDistribution(calcDistributionSimple());
             }
@@ -182,7 +198,7 @@ public class Var {
         //this.org_prompter =rDTO.getOrg_prompter();
     }
 
-    public VarDTO_Detailed toDTO_Detailed(UserAccountDTO watching_user, EntityManager em) {
+    public VarDTO_Detailed toDTO_Detailed(UserAccountDTO watching_user, UserHistoryDTO hist_dto, EntityManager em) {
         VarDTO_Detailed dto;
         if (var_type.equals(VarDTO_Detailed.alt_var_type)) {
             dto = new VarDTO_Detailed();
@@ -223,7 +239,7 @@ public class Var {
             ((TextVarDTO_Detailed) dto).setNumber_of_records(cortage_string.size());
         } else if (dto instanceof VarDTO_Detailed) {
             if (watching_user != null) {
-                calcDistribution(null,watching_user, dto, em);
+                calcDistribution(hist_dto,watching_user, dto, em);
             } else {
                 dto.setDistribution(calcDistributionSimple());
             }
@@ -508,6 +524,7 @@ public class Var {
             //weight_var_id = research.getVar_weight_id();
 
             //TODO here
+            //new UserAccount(em).updateAccountResearchState(em,watching_user);
             UserAccount acc = new UserAccount(em).getUserAccountUnsafe(watching_user.getId());
             if (acc != null) {
                 if(hist==null)hist = UserAccount.toHistoryDTO(acc,research_id,em);
@@ -604,7 +621,7 @@ public class Var {
         return distr;
     }
 
-    public static ArrayList<Double> calc2DDistribution(long var1_id, long var2_id, UserAccountDTO watching_user, EntityManager em) {
+    public static ArrayList<Double> calc2DDistribution(long var1_id, long var2_id, UserAccountDTO watching_user,UserHistoryDTO hist_dto,EntityManager em) {
 
         Logger.getLogger(Var.class.getName()).log(Level.INFO, "Start Calc 2DD distribution");
         long t1 = System.currentTimeMillis();
@@ -614,7 +631,8 @@ public class Var {
         Integer filters_use = 0;
         ArrayList<String> filters = new ArrayList<String>();
         ArrayList<Integer> filters_usage = new ArrayList<Integer>();
-        UserHistoryDTO hist_dto = new UserHistoryDTO();
+        //UserHistoryDTO hist_dto = new UserHistoryDTO();
+//        new UserAccount(em).updateAccountResearchState(em,watching_user);
         UserAccount acc = new UserAccount(em).getUserAccountUnsafe(watching_user.getId());
         if (acc != null) {
             hist_dto = UserAccount.toHistoryDTO(acc,watching_user.getCurrent_research(),em);

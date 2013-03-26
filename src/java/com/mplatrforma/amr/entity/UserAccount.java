@@ -119,6 +119,7 @@ public class UserAccount implements Serializable{
         return account;
   }
 
+
 /**
  * for this early version of the Connectr app, the 'current user' is always 
  * the same (the default user), so here this query is hardwired.
@@ -359,10 +360,10 @@ public class UserAccount implements Serializable{
     }
     UserAccountDTO dto = new UserAccountDTO(user.getEmailAddress(), user.getName(), user.getAccountType());
     dto.setId(user.getId());
-    //  dto.setFilters(user.history.getFilters());
+  //    dto.setFilters(user.history.getFilters());
   //  dto.setWeights_use(user.history.getWeights_use());
-  //  dto.setFilters_use(user.history.getFilters_use());
-  //  dto.setFilters_usage(user.history.getFilters_usage());
+  // dto.setFilters_use(user.history.getFilters_use());
+  // dto.setFilters_usage(user.history.getFilters_usage());
     
   //  dto.setFilters_categories(user.history.getFilters_categories());
     return dto;
@@ -398,13 +399,10 @@ public class UserAccount implements Serializable{
 //    dto.setFilters_categories(user.history.getFilters_categories());
     return dto;
   }
-  public UserAccountDTO updateAccountResearchState(UserAccountDTO dto) {
-//	    this.history.setFilters(dto.getFilters());
-//	    this.history.setWeights_use(dto.getWeights_use());
-//	    this.history.setFilters_use(dto.getFilters_use());
-//	    this.history.setFilters_usage(dto.getFilters_usage());
-//	    this.history.setFilters_categories(dto.getFilters_categories());
-	    return dto;
+  public UserHistoryDTO updateAccountResearchState(EntityManager em,UserHistoryDTO dto) {
+    	    this.history.updateAccountResearchState(dto);
+            em.persist(history);
+            return dto;
 	  }
 //
 //public ArrayList<Integer> getFilters_usage() {

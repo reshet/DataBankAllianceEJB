@@ -23,6 +23,9 @@
             <included-library dirs="200">file.reference.lucene-queries-3.6.2.jar</included-library>
             <included-library dirs="200">file.reference.snappy-java-1.0.4.1.jar</included-library>
             <included-library dirs="200">file.reference.spatial4j-0.3.jar</included-library>
+            <included-library dirs="200">file.reference.english-1.0.jar</included-library>
+            <included-library dirs="200">file.reference.morph-1.0.jar</included-library>
+            <included-library dirs="200">file.reference.russian-1.0.jar</included-library>
             <source-roots>
                 <root id="src.dir"/>
             </source-roots>

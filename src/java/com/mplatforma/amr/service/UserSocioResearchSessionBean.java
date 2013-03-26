@@ -31,6 +31,9 @@ import static org.elasticsearch.common.xcontent.XContentFactory.*;
 import org.elasticsearch.index.query.QueryBuilder;
 import static org.elasticsearch.node.NodeBuilder.*;
 import org.elasticsearch.node.Node;
+import org.elasticsearch.search.sort.FieldSortBuilder;
+import org.elasticsearch.search.sort.ScoreSortBuilder;
+import org.elasticsearch.search.sort.SortOrder;
 
 /**
  *
@@ -52,29 +55,31 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
     }
 
     @Override
-    public VarDTO getVar(long id,UserAccountDTO dto) {
+    public VarDTO getVar(long id,UserAccountDTO dto,UserHistoryDTO hist_dto) {
         Var v = em.find(Var.class, id);
         v.setEM(em);
-        return v.toDTO(dto,em);
+        return v.toDTO(dto,hist_dto,em);
     }
     public VarDTO_Light getVarLight(long id) {
         Var v = em.find(Var.class, id);
-        v.setEM(em);
-        return v.toDTO_Light();
+        if(v != null){
+            v.setEM(em);
+            return v.toDTO_Light();
+        } else return null;
     }
     @Override
-    public VarDTO_Detailed getVarDetailed(long id,UserAccountDTO dto) {
+    public VarDTO_Detailed getVarDetailed(long id,UserAccountDTO dto,UserHistoryDTO hist_dto) {
          Var v = em.find(Var.class, id);
-         v.setEM(em);
-         if(dto.getId()!= 0 && dto.getCurrent_research() == 0)
+         if(v != null)
          {
-             dto.setCurrent_research(v.getResearch_id());
-            //TODO s
-             // useracc.updateAccountResearchState(dto);
-         }
-         
-        return v.toDTO_Detailed(dto,em);
-    }
+            v.setEM(em);
+            if(dto!= null && dto.getId()!= 0 && dto.getCurrent_research() == 0)
+            {
+                dto.setCurrent_research(v.getResearch_id());
+            }
+           return v.toDTO_Detailed(dto,hist_dto,em);
+         }else return null;
+     }
 
     
     @Override
@@ -227,8 +232,8 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
     }
 
     @Override
-    public ArrayList<Double> get2DDistribution(long var_id1, long var_id2,UserAccountDTO dto) {
-        return Var.calc2DDistribution(var_id1, var_id2, dto, em);
+    public ArrayList<Double> get2DDistribution(long var_id1, long var_id2,UserAccountDTO dto,UserHistoryDTO hist_dto) {
+        return Var.calc2DDistribution(var_id1, var_id2, dto,hist_dto, em);
     }
 
     @Override
@@ -315,6 +320,18 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
 //		}
 	return Var.getResearchVarsLightDTOs(em, ids);
     }
+    @Override
+     public ArrayList<VarDTO_Detailed> getVarDTOsAsOrdered(ArrayList<Long> ids) {
+       ArrayList<VarDTO_Detailed> arr = new ArrayList<VarDTO_Detailed>();
+	if (ids != null)
+		for(Long key:ids)
+		{
+			VarDTO_Detailed dto = getVarDetailed(key,null,null);
+			if(dto!=null)arr.add(dto);
+		}
+        return arr;
+	//return Var.getResearchVarsLightDTOsUnordered(em, ids);
+    }
     
     private Node node;
     
@@ -330,8 +347,14 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
       node.close();
     }
     @Override
-    public String doIndexSearch(String json_query,String [] types_to_search) {
-        
+    public String doIndexSearch(String json_query,String [] types_to_search)
+    {
+        return doIndexSearchMaxResults(json_query, types_to_search, 100);
+    }
+    @Override
+    public String doIndexSearchMaxResults(String json_query,String [] types_to_search,int max_results)
+    {
+             
         
         try {
             QueryBuilder qb = termQuery("value", "superradio");
@@ -364,8 +387,11 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
                 .setSearchType(SearchType.DFS_QUERY_THEN_FETCH)
                 .setQuery(json_query)
                 .setExplain(true)
+                    .addSort(new ScoreSortBuilder().order(SortOrder.DESC))
                 //.setHighlighterEncoder("\"fields\" : {\"_all\" : {}}")
                 .addHighlightedField("_all")
+                 //   .setS
+                 .setSize(max_results)
                  .execute()
                 .actionGet();
             
@@ -394,7 +420,7 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
         finally{
           
         }
-        //return "empty";
+   
     }
     
     @Override
@@ -801,10 +827,15 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
        {
         Var v = em.find(Var.class, k);
          v.setEM(em);
-         VarDTO_Detailed dto =  v.toDTO_Detailed(null,em);   
+         VarDTO_Detailed dto =  v.toDTO_Detailed(null,null,em);   
          map.add(new VarDTO_Research(dto.getId(),dto.getResearch_id().intValue(), dto.getResearch_name()));
        }
         return map;
+    }
+
+    @Override
+    public ArrayList<VarDTO_Light> getResearchVarsWeightCandidates(long research_id) {
+        return Var.getResearchVarsWeightCandidates(em, research_id);
     }
 
    

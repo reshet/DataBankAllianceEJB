@@ -42,7 +42,8 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
     @Override
     public UserAccountDTO getUserAccount(String email, String password) {
         
-       // initDefaults();
+        
+       //initDefaults();
        //createDefaultDatabankStructure();
        //return new UserAccountDTO(email,email, password);
        //createDefaultDatabankVarStructure();
@@ -55,6 +56,8 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
     } 
     @Override
     public void initDefaults() {
+        
+        System.out.println("Initing defaults!");
         new UserAccount(em).createDefaults();
         createDefaultDatabankStructure();
         createDefaultDatabankVarStructure();
@@ -62,6 +65,8 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
         createDefaultDatabankPubStructure();
         //createDefaultDatabankJuryStructure();
         createDefaultStartPage();
+        System.out.println("Initing defaults finished!");
+        
     }
      private void createDefaultDatabankStructure()
       {
@@ -333,16 +338,18 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
           em.persist(p);
       }
     @Override
-    public UserAccountDTO updateAccountResearchState(UserAccountDTO dto) {
+    public UserHistoryDTO updateAccountResearchState(UserHistoryDTO dto,long acc_id) {
         UserAccount account;
-        UserAccountDTO returnBack = dto;
-        account = em.find(UserAccount.class,dto.getId());
+        UserHistoryDTO returnBack = dto;
+        account = em.find(UserAccount.class,acc_id);
         if (account != null)
         {
-                account.updateAccountResearchState(dto);
-                returnBack = UserAccount.toDTO(account);
-                
-        }
+                if(dto.getCurrent_research()!=null && dto.getCurrent_research().getResearh()!= null)
+                {
+                  account.updateAccountResearchState(em,dto);
+                  returnBack = UserAccount.toHistoryDTO(account, dto.getCurrent_research().getResearh().getID(), em);
+        }       }
+               
         return returnBack;
     }
 
@@ -420,7 +427,15 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
             if(hist!= null)
             {
                 UserMassiveLocalSetting setting = new UserMassiveLocalSetting(dto);
-                hist.getLocal_research_settings().add(setting);
+                boolean found = false;
+                for(UserMassiveLocalSetting sett:hist.getLocal_research_settings())
+                {
+                    if(sett.getResearch_id().equals(setting.getResearch_id())){
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)hist.getLocal_research_settings().add(setting);
                 em.persist(hist);
             }
          }

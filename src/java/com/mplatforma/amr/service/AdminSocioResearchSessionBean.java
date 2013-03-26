@@ -6,21 +6,22 @@ package com.mplatforma.amr.service;
 
 import argo.format.CompactJsonFormatter;
 import argo.format.JsonFormatter;
-import argo.format.PrettyJsonFormatter;
+import static argo.format.JsonNumberUtils.asBigDecimal;
+import static argo.jdom.JsonNodeBuilders.*;
 import argo.jdom.*;
+import argo.saj.InvalidSyntaxException;
 import com.mplatforma.amr.service.remote.AdminSocioResearchBeanRemote;
 import com.mplatforma.amr.service.remote.RxStorageBeanRemote;
-import com.mplatforma.amr.service.remote.UserAccountBeanRemote;
 import com.mplatforma.amr.service.remote.UserSocioResearchBeanRemote;
-
 import com.mplatrforma.amr.entity.*;
-import com.mresearch.databank.jobs.*;
+import com.mresearch.databank.jobs.DeleteIndexiesJob;
+import com.mresearch.databank.jobs.IndexResearchJob;
+import com.mresearch.databank.jobs.IndexVarJobFast;
+import com.mresearch.databank.jobs.ParseSpssJob;
 import com.mresearch.databank.shared.*;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Array;
+import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -31,37 +32,13 @@ import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import javax.ejb.EJB;
 import javax.ejb.Stateless;
-import javax.ejb.LocalBean;
-import javax.jms.Connection;
-import javax.jms.ConnectionFactory;
-import javax.jms.JMSException;
-import javax.jms.MessageProducer;
-import javax.jms.ObjectMessage;
-import javax.jms.Queue;
-import javax.jms.QueueConnection;
-import javax.jms.QueueConnectionFactory;
-import javax.jms.QueueSender;
-import javax.jms.QueueSession;
-import javax.jms.Session;
+import javax.jms.*;
 import javax.jws.WebService;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
-import javax.persistence.Query;
-import javax.persistence.TypedQuery;
-import org.elasticsearch.common.mvel2.optimizers.impl.refl.nodes.ArrayLength;
-import org.opendatafoundation.data.FileFormatInfo;
-import org.opendatafoundation.data.FileFormatInfo.Format;
-import org.opendatafoundation.data.mod.SPSSFile;
-import org.opendatafoundation.data.mod.SPSSFileException;
-import org.opendatafoundation.data.mod.SPSSNumericVariable;
-import org.opendatafoundation.data.mod.SPSSStringVariable;
-import org.opendatafoundation.data.mod.SPSSVariable;
-import org.w3c.dom.Document;
-
-import static argo.jdom.JsonNodeBuilders.*;
-import argo.saj.InvalidSyntaxException;
-import static argo.format.JsonNumberUtils.asBigDecimal;
-import java.math.BigDecimal;
+import org.apache.lucene.morphology.LuceneMorphology;
+import org.apache.lucene.morphology.russian.RussianAnalyzer;
+import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
 
 /**
  *
@@ -93,14 +70,14 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
     @EJB
     private UserSocioResearchBeanRemote user_bean;
    
-    public UserAccountDTO updateAccountResearchState(UserAccountDTO dto) {
+    public UserHistoryDTO updateAccountResearchState(UserHistoryDTO dto) {
         UserAccount account;
-        UserAccountDTO returnBack = dto;
+        UserHistoryDTO returnBack = dto;
         account = em.find(UserAccount.class,dto.getId());
         if (account != null)
         {
-                account.updateAccountResearchState(dto);
-                returnBack = UserAccount.toDTO(account);
+                account.updateAccountResearchState(em,dto);
+                returnBack = UserAccount.toHistoryDTO(account,dto.getCurrent_research().getResearh().getID(),em);
         }
         return returnBack;
     }
@@ -384,7 +361,7 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
 	      dsVar = em.find(Var.class, var_id);
 	      dsVar.setGeneralized_var_ids(gen_var_ids);
 	     // UserAccountDTO watching_user = (UserAccountDTO) this.getThreadLocalRequest().getSession().getAttribute("user");
-	      detailed = dsVar.toDTO_Detailed(user,em);
+	      detailed = dsVar.toDTO_Detailed(user,null,em);
 	    } finally {
 	    }
 	    
@@ -719,40 +696,136 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
     
     
      @Override
-    public ArrayList<VarDTO_Light> findVarsLikeThis(Long var_id, ComparativeSearchParamsDTO params) {
+    public ArrayList<VarDTO_Detailed> findVarsLikeThis(Long var_id, ComparativeSearchParamsDTO params) {
          Var v = em.find(Var.class, var_id);
          v.setEM(em);
-         VarDTO_Detailed dto =  v.toDTO_Detailed(null,em); 
+         VarDTO_Detailed dto =  v.toDTO_Detailed(null,null,em); 
          ArrayList<Long> varids = doSearchLikewise(dto, params);
-         ArrayList<VarDTO_Light> lst = new ArrayList<VarDTO_Light>();
-         if(varids.size()>0) lst = user_bean.getVarDTOs(varids);
+         ArrayList<VarDTO_Detailed> lst = new ArrayList<VarDTO_Detailed>();
+         if(varids.size()>0) lst = user_bean.getVarDTOsAsOrdered(varids);
          return lst;
      }
-     private ArrayList<String> cropSearchString(String str, int granularity)
+     private ArrayList<String> cropSearchString(String str, int granularity, boolean overlap)
      {
         ArrayList<String> strs = new ArrayList<String>();
         
         String [] arr = str.split(" "); 
+        String prev = "";
         for(int i = 0; i < arr.length;i+=granularity)
         {
-            StringBuilder strb = new StringBuilder();
-            for(int j = i; j < i+granularity && j < arr.length;j++)
+            //arr[i] = arr[i].replaceAll("([^а-яіє’А-Я0-9]+)", "");
+            //arr[i] = arr[i].replaceAll("[0-9]", "");
+            if(!arr[i].equals(""))
             {
-                 strb.append(arr[j]);
-                 strb.append(" ");
+                StringBuilder strb = new StringBuilder();
+                if(!prev.equals("")&& i > 0) prev = arr[i-1];
+                if(overlap) {
+                    strb.append(prev);
+                    if((arr.length - i)>1)strb.append(" ");
+                }
+                for(int j = i; j < i+granularity && j < arr.length;j++)
+                {
+                   
+                    strb.append(arr[j]);
+                    if((arr.length - i)>1)strb.append(" ");
+                }
+                strs.add(strb.toString());
             }
-            strs.add(strb.toString());
+            
         }
          //str.
          return strs;
+     }
+     
+    // private  RussianAnalyzer russian = null;
+    // private LuceneMorphology luceneMorph = null;
+//     private RussianAnalyzer getRussAnal() throws IOException
+//     {
+//         if(russian == null)russian = new RussianAnalyzer();
+//         return russian;
+//     }
+//      private  LuceneMorphology getMorph() throws IOException
+//     {
+//         if(luceneMorph == null)luceneMorph = new RussianLuceneMorphology();
+//         return luceneMorph;
+//     }
+//     private ArrayList<String> morphSearchString(String str)
+//     {
+//        ArrayList<String> strs = new ArrayList<String>();
+//        try {
+//            //Use only main clause words.
+//           //RussianAnalyzer russian = getRussAnal();
+//           //russian.
+//               //;
+//                //luceneMorph
+//                //luceneMorph.
+//                if( getMorph().checkString(str)){
+//                    List<String> wordBaseForms =  getMorph().getMorphInfo(str);
+//                    List<String> wordBaseForms2 =  getMorph().getNormalForms(str);
+//                }
+//                // TokenStream tokenStream = new MorphlogyFilter(str, luceneMorph);
+//     //List<String> wordBaseForms = luceneMorph.getMorphInfo(str);
+//         //  russian.
+//           //russian
+//        } catch (IOException ex) {
+//            Logger.getLogger(AdminSocioResearchSessionBean.class.getName()).log(Level.SEVERE, null, ex);
+//        }
+//        return strs;
+//     }
+     private void buildTextPhraseVarTextPart(JsonArrayNodeBuilder arr_contains,VarDTO_Detailed origin_var)
+     {
+          String question_label = origin_var.getLabel();
+         //ArrayList<String> sublabels = cropSearchString(question_label, 3);
+         ArrayList<String> sublabels = cropSearchString(question_label, 2,true);
+        
+         for(int i = 0; i < sublabels.size();i++)
+        {
+            JsonObjectNodeBuilder obj_b = anObjectBuilder()
+                .withField("match_phrase_prefix", anObjectBuilder()
+                    .withField("sociovar_name", anObjectBuilder()
+                        .withField("query", aStringBuilder(sublabels.get(i)))
+                     )
+               //     .withField("fuziness", aNumberBuilder("0.2"))
+                 );
+               // obj_b.put("text_phrase", obj_field_name);
+                arr_contains.withElement(obj_b);
+        }
+     }
+     private void buildTextPhraseVarAlternativesTextPart(JsonArrayNodeBuilder arr_contains,VarDTO_Detailed origin_var)
+     {
+          List<String> alt_labels = origin_var.getV_label_values();
+         //ArrayList<String> sublabels = cropSearchString(question_label, 3);
+          ArrayList<String> sublabels = new ArrayList<String>();
+          for(String label:alt_labels)
+          {
+            ArrayList<String> subs = cropSearchString(label, 2,true);
+            for(String sub:subs){sublabels.add(sub);}
+          }
+         
+         for(int i = 0; i < sublabels.size();i++)
+        {
+            JsonObjectNodeBuilder obj_b = anObjectBuilder()
+                .withField("match_phrase_prefix", anObjectBuilder()
+                    .withField("sociovar_alt_values", anObjectBuilder()
+                        .withField("query", aStringBuilder(sublabels.get(i)))
+                     )
+               //     .withField("fuziness", aNumberBuilder("0.2"))
+                 );
+               // obj_b.put("text_phrase", obj_field_name);
+                arr_contains.withElement(obj_b);
+        }
      }
      private String constructSearchLikewiseQuery(VarDTO_Detailed origin_var, ComparativeSearchParamsDTO params)
      {
         //here we compose first likewise search query
          // simplest form - search for question
          
-         String question_label = origin_var.getLabel();
-         ArrayList<String> sublabels = cropSearchString(question_label, 3);
+         
+         //for(String st:sublabels)
+         //{
+         //   morphSearchString(st);
+         //}
+         //ArrayList<String> sublabels = morphSearchString(question_label);
          
          String query = "";
         
@@ -774,26 +847,11 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
        
         
         JsonArrayNodeBuilder arr_contains = anArrayBuilder();
-
-        //JSONObject obj_bool_contains_too = new JSONObject();
-        //JSONObject obj_contains_too = new JSONObject();
-        //JSONArray arr_contains_too = new JSONArray();
-
-
-
-        int index_c=0,index_c2=0,index_c3=0;
-        for(int i = 0; i < sublabels.size();i++)
-        {
-            JsonObjectNodeBuilder obj_b = anObjectBuilder()
-                .withField("text_phrase", anObjectBuilder()
-                    .withField("sociovar_name", anObjectBuilder()
-                        .withField("query", aStringBuilder(sublabels.get(i)))
-                     )
-               //     .withField("fuziness", aNumberBuilder("0.2"))
-                 );
-               // obj_b.put("text_phrase", obj_field_name);
-                arr_contains.withElement(obj_b);
-        }
+        buildTextPhraseVarTextPart(arr_contains, origin_var);
+        buildTextPhraseVarAlternativesTextPart(arr_contains, origin_var);
+        
+        //int index_c=0,index_c2=0,index_c3=0;
+        
         
         JsonObjectNodeBuilder obj_bool_contains = anObjectBuilder()
                 .withField("bool", anObjectBuilder()
@@ -816,16 +874,12 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
         //obj_bool.put("bool", obj_must);
 //	      String quer = obj_bool.toString();
          JsonRootNode json = obj_bool_contains.build();
-         String str = json.toString();
+         //String str = json.toString();
          query = JSON_FORMATTER.format(json);
-         //query = query.replaceAll("\\<.*?>","");
-         //query = query.replaceAll("<[^>]+>", "");
-         
-	 //query = json.toString();
          return query;
      }
      
-     private ArrayList<Long> doParseLikewiseSearchResult(VarDTO_Detailed origin_var, ComparativeSearchParamsDTO params,String result)
+     private ArrayList<Long> doParseLikewiseSearchResult(VarDTO_Detailed origin_var, ComparativeSearchParamsDTO params,String result,double min_score)
      {  
          ArrayList<Long> var_ids = new ArrayList<Long>();
         
@@ -854,7 +908,10 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
                 JsonNode hit = (JsonNode)hiters.get(i);
                 BigDecimal varid = asBigDecimal(hit.getNode("_source").getNumberValue("sociovar_ID"));
                 Long ivarid = varid.longValue();
-                var_ids.add(ivarid);
+                
+                BigDecimal sc = asBigDecimal(hit.getNumberValue("_score"));
+                Double score = sc.doubleValue();
+                if(score >= min_score) var_ids.add(ivarid);
             }
 
             
@@ -868,8 +925,8 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
      {
         String query = constructSearchLikewiseQuery(origin_var, params); 
         String [] types = new String[]{"sociovar"};
-        String result = user_bean.doIndexSearch(query, types);
-        ArrayList<Long> var_ids = doParseLikewiseSearchResult(origin_var, params, result);
+        String result = user_bean.doIndexSearchMaxResults(query, types,20);
+        ArrayList<Long> var_ids = doParseLikewiseSearchResult(origin_var, params, result,1.0);
         return var_ids;   
      }
 
@@ -882,7 +939,7 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
              {
                 Var dsVar = em.find(Var.class, var_id);
                 ArrayList<Long> other = new ArrayList<Long>();
-                for(Long vid:gen_var_ids)if(vid.equals(var_id))other.add(vid);
+                for(Long vid:gen_var_ids)if(!vid.equals(var_id))other.add(vid);
                 dsVar.setGeneralized_var_ids(other);
                 em.persist(dsVar);
              }

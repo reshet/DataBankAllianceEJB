@@ -76,13 +76,44 @@ public class RegisteredUserHistory implements Serializable{
   }
 
  
-  public UserHistoryDTO updateAccountResearchState(UserHistoryDTO dto) {
+  public void updateAccountResearchState(UserHistoryDTO dto) {
+            long res_id = dto.getCurrent_research().getResearh().getId();
+            if(local_research_settings == null)   local_research_settings = new ArrayList<UserMassiveLocalSetting>();
+            boolean found = false;
+            if(!local_research_settings.isEmpty())
+            {
+                for(UserMassiveLocalSetting st:local_research_settings)
+                {
+                    if(st.getResearch_id().equals(res_id))
+                    {
+                        st.setFilters(dto.getCurrent_research().getFilters());
+                        st.setWeights_use(dto.getCurrent_research().getWeights_use());
+                        st.setFilters_use(dto.getCurrent_research().getFilters_use());
+                        st.setFilters_usage(dto.getCurrent_research().getFilters_usage());
+                        st.setWeights_var_id(dto.getCurrent_research().getWeights_var_id());
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if(!found){
+                UserMassiveLocalSetting st = new UserMassiveLocalSetting();
+                st.setResearch_id(res_id);
+                st.setFilters(dto.getCurrent_research().getFilters());
+                st.setWeights_use(dto.getCurrent_research().getWeights_use());
+                st.setFilters_use(dto.getCurrent_research().getFilters_use());
+                st.setFilters_usage(dto.getCurrent_research().getFilters_usage());
+                st.setWeights_var_id(dto.getCurrent_research().getWeights_var_id());
+                local_research_settings.add(st);
+            }
+            
+             
 //	    this.setFilters(dto.getFilters());
 //	    this.setWeights_use(dto.getWeights_use());
 //	    this.setFilters_use(dto.getFilters_use());
 //	    this.setFilters_usage(dto.getFilters_usage());
 //	    this.setFilters_categories(dto.getFilters_categories());
-	    return dto;
+	    //return dto;
 	  }
 
 //public ArrayList<Integer> getFilters_usage() {

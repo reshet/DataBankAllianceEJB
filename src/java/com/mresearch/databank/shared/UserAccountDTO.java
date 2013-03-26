@@ -38,6 +38,7 @@ private long id;
   
   private Integer weights_use = 0;
   private Integer filters_use = 0;
+   private Integer weight_var_id = 0;
   private ArrayList<String> filters;
   private ArrayList<Long> filters_categories = new ArrayList<Long>();
   private ArrayList<Integer> filters_usage = new ArrayList<Integer>();
@@ -286,6 +287,20 @@ public void setCurrent_research(long current_research) {
 //			toProcess.add(filter);
 //		}
 //	}
+
+    /**
+     * @return the weight_var_id
+     */
+    public Integer getWeight_var_id() {
+        return weight_var_id;
+    }
+
+    /**
+     * @param weight_var_id the weight_var_id to set
+     */
+    public void setWeight_var_id(Integer weight_var_id) {
+        this.weight_var_id = weight_var_id;
+    }
 	
 
 }

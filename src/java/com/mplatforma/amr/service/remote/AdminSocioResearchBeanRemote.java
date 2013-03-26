@@ -38,6 +38,6 @@ public interface AdminSocioResearchBeanRemote {
       void setStartupContent(StartupBundleDTO dto);
       
       
-      ArrayList<VarDTO_Light> findVarsLikeThis(Long var_id,ComparativeSearchParamsDTO params);
+      ArrayList<VarDTO_Detailed> findVarsLikeThis(Long var_id,ComparativeSearchParamsDTO params);
     
 }
