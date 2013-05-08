@@ -48,6 +48,8 @@ public abstract class SPSSVariable {
     SPSSFile               file;             //< The SPSS file this variable belongs to
     public SPSSRecordType2 variableRecord;   //< The SPSS type 2 record describing this variable
     public SPSSRecordType3 valueLabelRecord; //< The optional SPSS type 3 record holding this variable value labels
+
+   
     
     static enum VariableType {NUMERIC,STRING}; //< The SPSS variable type enumeration
     VariableType type; /** The type of variable */
@@ -780,5 +782,47 @@ public abstract class SPSSVariable {
         // NOTE: missing value range is not allowed for string variables
         return(rc);
     }
-
+    
+    public String getMissing1(){
+        
+        if(this.variableRecord.missingValueFormatCode>0) {
+                  if(variableRecord.variableTypeCode==0) return ""+String.valueOf(SPSSUtils.byte8ToDouble(variableRecord.missingValue[0]));
+	             else return SPSSUtils.byte8ToString(variableRecord.missingValue[0]);
+           // return SPSSUtils.byte8ToString(this.variableRecord.missingValue[0]); 
+        } 
+        
+//        else if(this.variableRecord.missingValueFormatCode <= -2) {
+//            // -2 --> range of missing value codes
+//            return SPSSUtils.byte8ToString(this.variableRecord.missingValue[1]);
+//        } else if(this.variableRecord.missingValueFormatCode==-3) {
+//                // -3 --> an extra discrete value is also specified 
+//                return SPSSUtils.byte8ToString(this.variableRecord.missingValue[2]);
+//            }
+        else return null;
+    }
+    public String getMissing2(){
+        if(this.variableRecord.missingValueFormatCode>0) {
+                  if(variableRecord.variableTypeCode==0) return ""+String.valueOf(SPSSUtils.byte8ToDouble(variableRecord.missingValue[1]));
+	             else return SPSSUtils.byte8ToString(variableRecord.missingValue[1]);
+        } 
+        else if(this.variableRecord.missingValueFormatCode <= -2) {
+            // -2 --> range of missing value codes
+                  if(variableRecord.variableTypeCode==0) return ""+String.valueOf(SPSSUtils.byte8ToDouble(variableRecord.missingValue[1]));
+	             else return SPSSUtils.byte8ToString(variableRecord.missingValue[1]);
+        } 
+        else return null;
+    }
+    
+    public String getMissing3(){
+        if(this.variableRecord.missingValueFormatCode>0) {
+                  if(variableRecord.variableTypeCode==0) return ""+String.valueOf(SPSSUtils.byte8ToDouble(variableRecord.missingValue[2]));
+	             else return SPSSUtils.byte8ToString(variableRecord.missingValue[2]);
+        } 
+        else if(this.variableRecord.missingValueFormatCode==-3) {
+                // -3 --> an extra discrete value is also specified 
+                  if(variableRecord.variableTypeCode==0) return ""+String.valueOf(SPSSUtils.byte8ToDouble(variableRecord.missingValue[2]));
+	             else return SPSSUtils.byte8ToString(variableRecord.missingValue[2]);
+            }
+        else return null;
+    }
 }

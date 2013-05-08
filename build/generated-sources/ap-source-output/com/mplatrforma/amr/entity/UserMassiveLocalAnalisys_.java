@@ -8,12 +8,14 @@ import javax.annotation.Generated;
 import javax.persistence.metamodel.SingularAttribute;
 import javax.persistence.metamodel.StaticMetamodel;
 
-@Generated(value="EclipseLink-2.3.0.v20110604-r9504", date="2013-03-26T15:21:07")
+@Generated(value="EclipseLink-2.3.0.v20110604-r9504", date="2013-05-08T19:46:33")
 @StaticMetamodel(UserMassiveLocalAnalisys.class)
 public class UserMassiveLocalAnalisys_ { 
 
-    public static volatile SingularAttribute<UserMassiveLocalAnalisys, Integer> id;
     public static volatile SingularAttribute<UserMassiveLocalAnalisys, UserMassiveLocalSetting> setting;
+    public static volatile SingularAttribute<UserMassiveLocalAnalisys, Integer> id;
+    public static volatile SingularAttribute<UserMassiveLocalAnalisys, String> user2dd_choice;
+    public static volatile SingularAttribute<UserMassiveLocalAnalisys, ArrayList> distribution_valid;
     public static volatile SingularAttribute<UserMassiveLocalAnalisys, Date> date_saved;
     public static volatile SingularAttribute<UserMassiveLocalAnalisys, String> name;
     public static volatile SingularAttribute<UserMassiveLocalAnalisys, String> distr_type;

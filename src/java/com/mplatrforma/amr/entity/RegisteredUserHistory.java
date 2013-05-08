@@ -23,6 +23,7 @@ import java.util.ArrayList;
 
 import com.mresearch.databank.shared.UserAccountDTO;
 import com.mresearch.databank.shared.UserHistoryDTO;
+import com.mresearch.databank.shared.UserResearchSettingDTO;
 import java.io.Serializable;
 import java.util.List;
 import javax.ejb.Stateless;
@@ -61,7 +62,7 @@ public class RegisteredUserHistory implements Serializable{
 //    private ArrayList<Integer> filters_usage = new ArrayList<Integer>();
 //    private ArrayList<Long> filters_categories = new ArrayList<Long>();
 //  
-    private ArrayList<Integer> favourite_massives = new ArrayList<Integer>();
+    private ArrayList<Long> favourite_massives = new ArrayList<Long>();
     
   public RegisteredUserHistory() {
 	  //accountType = "defaultUser";
@@ -75,7 +76,27 @@ public class RegisteredUserHistory implements Serializable{
     return id;
   }
 
- 
+//done in upper layer.
+//    public UserMassiveLocalSetting getAccountResearchState(long res_id) {
+//        UserMassiveLocalSetting setting = new UserMassiveLocalSetting();    
+//        if(local_research_settings == null)   local_research_settings = new ArrayList<UserMassiveLocalSetting>();
+//            if(!local_research_settings.isEmpty())
+//            {
+//                for(UserMassiveLocalSetting st:local_research_settings)
+//                {
+//                    if(st.getResearch_id().equals(res_id))
+//                    {
+//                        setting.setFilters(st.getFilters());
+//                        setting.setWeights_use(st.getWeights_use());
+//                        setting.setFilters_use(st.getFilters_use());
+//                        setting.setFilters_usage(st.getFilters_usage());
+//                        setting.setWeights_var_id(st.getWeights_var_id());
+//                        break;
+//                    }
+//                }
+//            }
+//            return setting;
+//     }
   public void updateAccountResearchState(UserHistoryDTO dto) {
             long res_id = dto.getCurrent_research().getResearh().getId();
             if(local_research_settings == null)   local_research_settings = new ArrayList<UserMassiveLocalSetting>();
@@ -158,6 +179,30 @@ public class RegisteredUserHistory implements Serializable{
      */
     public List<UserMassiveLocalSetting> getLocal_research_settings() {
         return local_research_settings;
+    }
+    public List<UserMassiveLocalSetting> getFavouriteMassives() {
+        List<UserMassiveLocalSetting> res = new ArrayList<UserMassiveLocalSetting>();
+        for(UserMassiveLocalSetting set:local_research_settings){
+            if(favourite_massives.contains(set.getResearch_id())) res.add(set);
+        }
+        return res;
+    }
+    public void addToFavouriteMassives(UserMassiveLocalSetting setting){
+        
+         if(!favourite_massives.contains(setting.getResearch_id())){
+              boolean found = false;
+                for(UserMassiveLocalSetting sett:local_research_settings)
+                {
+                    if(sett.getResearch_id().equals(setting.getResearch_id())){
+                        found = true;
+                        
+                        break;
+                    }
+                }
+                if (!found)local_research_settings.add(setting);
+                
+              favourite_massives.add(setting.getResearch_id());
+         }               
     }
 
 }

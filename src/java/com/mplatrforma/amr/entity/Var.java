@@ -1,6 +1,7 @@
 package com.mplatrforma.amr.entity;
 
 import com.mresearch.databank.shared.*;
+import com.sun.org.apache.xpath.internal.operations.Equals;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.persistence.*;
+import org.apache.lucene.util.fst.PairOutputs;
 
 @Entity
 @NamedQueries({
@@ -20,6 +22,7 @@ import javax.persistence.*;
     @NamedQuery(name = "Var.getResearchVarsLightIN", query = "SELECT NEW com.mresearch.databank.shared.VarDTO_Light(x.id, x.code, x.label) FROM Var x WHERE x.id IN :idlist ORDER BY x.id"),
     @NamedQuery(name = "Var.getResearchVarsLightIN_unordered", query = "SELECT NEW com.mresearch.databank.shared.VarDTO_Light(x.id, x.code, x.label) FROM Var x WHERE x.id IN :idlist"),
     @NamedQuery(name = "Var.deleteList", query = "DELETE FROM Var x WHERE x.research_id = :res_id"),
+    @NamedQuery(name = "Var.deleteAnalisys", query = "DELETE FROM UserMassiveLocalAnalisys x WHERE x.var_involved_first.id IN (SELECT v.id FROM Var v WHERE v.research_id = :res_id) OR x.var_involved_second.id IN (SELECT v2.id FROM Var v2 WHERE v2.research_id = :res_id)"),
     @NamedQuery(name = "Var.getIDsList", query = "SELECT x.id FROM Var x WHERE x.research_id = :res_id ORDER BY x.id")
 })
 public class Var {
@@ -33,6 +36,7 @@ public class Var {
     private String code;
     @Column(columnDefinition = "TEXT")
     private String label;
+    private String missing1,missing2,missing3;
     private String code_schema_id;
     private String var_type;
     private ArrayList<Double> v_label_codes;
@@ -99,6 +103,10 @@ public class Var {
 
     public static int deleteResearchVars(EntityManager em, Long id) {
 
+        Query q_an = em.createNamedQuery("Var.deleteAnalisys");
+        q_an.setParameter("res_id", id);
+        q_an.executeUpdate();
+        
         Query q = em.createNamedQuery("Var.deleteList");
         q.setParameter("res_id", id);
         return q.executeUpdate();
@@ -181,7 +189,9 @@ public class Var {
             if (watching_user != null) {
                 calcDistribution(hist_dto,watching_user, dto, em);
             } else {
-                dto.setDistribution(calcDistributionSimple());
+                PairDistr pd = calcDistributionSimple();
+                dto.setDistribution(pd.distr);
+                dto.setValid_distribution(pd.valid_distr);
             }
         }
         return dto;
@@ -239,9 +249,13 @@ public class Var {
             ((TextVarDTO_Detailed) dto).setNumber_of_records(cortage_string.size());
         } else if (dto instanceof VarDTO_Detailed) {
             if (watching_user != null) {
-                calcDistribution(hist_dto,watching_user, dto, em);
+                PairDistr pd = calcDistribution(hist_dto,watching_user, dto, em);
+                dto.setDistribution(pd.distr);
+                dto.setValid_distribution(pd.valid_distr);
             } else {
-                dto.setDistribution(calcDistributionSimple());
+                PairDistr pd = calcDistributionSimple();
+                dto.setDistribution(pd.distr);
+                dto.setValid_distribution(pd.valid_distr);
             }
         }
 
@@ -356,15 +370,41 @@ public class Var {
 
         return ids;
     }
-
-    private ArrayList<Double> calcDistributionSimple() {
+    private boolean isMissingValue(double d){
+        String mymis = String.valueOf(d);
+        
+        return missing1!=null && missing1.equals(mymis) 
+               || missing2!=null && missing2.equals(mymis)
+                || missing3!=null && missing3.equals(mymis);
+        
+//        if(missing2.equals("\"\"") && missing3.equals("\"\""))
+//        {
+//            return missing1.equals(String.valueOf(d));
+//        }else{
+//            if(missing3.equals("\"\"")){
+//                double mis1 = Double.parseDouble(missing1);
+//                double mis2 = Double.parseDouble(missing2);
+//                return (mis1 <= d && d <= mis2);
+//            }
+//            else{
+//               return missing3.equals(String.valueOf(d));
+//            }
+//        }
+    }
+    private PairDistr calcDistributionSimple() {
         //PersistenceManager pm = PMF.get().getPersistenceManager();
         //UserAccount account = 
 
         //if(v_label_codes = null) v_label_codes
+        
+        //missing values stored in tail of list only in dist.
         ArrayList<Double> distr = new ArrayList<Double>(v_label_codes.size());
+        ArrayList<Double> valid_distr = new ArrayList<Double>(v_label_codes.size());
+        //Double missAccum = 0.0;
+        
         for (int i = 0; i < v_label_codes.size(); i++) {
             distr.add(new Double(0));
+            valid_distr.add(new Double(0));
         }
         for (Double value : cortage) {
             if (!value.equals(Double.NaN)) {
@@ -372,10 +412,16 @@ public class Var {
                 if (setIndex >= 0) {
                     Double val = distr.get(setIndex);
                     distr.set(setIndex, val + 1);
+                    if(!isMissingValue(value))
+                    {
+                        Double val_v = valid_distr.get(setIndex);
+                        valid_distr.set(setIndex, val_v + 1);
+                    }
                 }
+                
             }
         }
-        return distr;
+        return new PairDistr(distr, valid_distr);
     }
 
     private Var findVar(String code) {
@@ -502,7 +548,7 @@ public class Var {
         return filtered_cortage;
     }
 
-    public ArrayList<Double> calcDistribution(UserHistoryDTO hist,UserAccountDTO watching_user, VarDTO dto_calcing_for, EntityManager em) {
+    public PairDistr calcDistribution(UserHistoryDTO hist,UserAccountDTO watching_user, VarDTO dto_calcing_for, EntityManager em) {
         SocioResearch research;
         ArrayList<Long> var_ids = new ArrayList<Long>();
         long weight_var_id = 0;
@@ -526,12 +572,16 @@ public class Var {
             //TODO here
             //new UserAccount(em).updateAccountResearchState(em,watching_user);
             UserAccount acc = new UserAccount(em).getUserAccountUnsafe(watching_user.getId());
-            if (acc != null) {
-                if(hist==null)hist = UserAccount.toHistoryDTO(acc,research_id,em);
-                weight_var_id = hist.getCurrent_research().getWeights_var_id();
-                weights_use = hist.getCurrent_research().getWeights_use();
-                filters_use = hist.getCurrent_research().getFilters_use();
-                filters = hist.getCurrent_research().getFiltersToProcess();
+            //hard-coded admin exclusion.
+            if (acc == null || (acc != null && !acc.getAccountType().equals("researchAdmin"))) {
+                if(hist==null && acc != null)hist = UserAccount.toHistoryDTO(acc,research_id,em);
+                if(hist != null){
+                    weight_var_id = hist.getCurrent_research().getWeights_var_id();
+                    weights_use = hist.getCurrent_research().getWeights_use();
+                    filters_use = hist.getCurrent_research().getFilters_use();
+                    filters = hist.getCurrent_research().getFiltersToProcess();
+                }
+                
             }
             // = UserAccount.toHistoryDTO(new UserAccount(em).getUserAccount(watching_user.getEmailAddress(), "pswd"))
         } finally {
@@ -539,11 +589,16 @@ public class Var {
         }
         //UserAccount account = 
 
-
+        //last item for missing values!
         ArrayList<Double> distr = new ArrayList<Double>(v_label_codes.size());
+        ArrayList<Double> valid_distr = new ArrayList<Double>(v_label_codes.size());
+       
         for (int i = 0; i < v_label_codes.size(); i++) {
             distr.add(new Double(0));
+            valid_distr.add(new Double(0));
         }
+        //last item
+        //distr.add(0.0);
         //prepare filters
         ArrayList<Double> filtered = new ArrayList<Double>();
         ArrayList<Integer> filtered_indecies = new ArrayList<Integer>();
@@ -577,11 +632,19 @@ public class Var {
                 for (Double value : filtered) {
                     if (!value.equals(Double.NaN)) {
                         int setIndex = v_label_codes.indexOf(value);
+                        Double increment = weights.get(filtered_indecies.get(j));
                         if (setIndex >= 0) {
                             Double val = distr.get(setIndex);
-                            Double increment = weights.get(filtered_indecies.get(j));
                             distr.set(setIndex, val + increment);
+                             if(!isMissingValue(value))
+                            {
+    //                            Double val = distr.get(distr.size()-1);
+    //                            distr.set(distr.size()-1, val + increment);
+                                Double val_v = valid_distr.get(setIndex);
+                                valid_distr.set(setIndex, val_v + increment);
+                            }
                         }
+                       
                     }
                     j++;
                 }
@@ -592,11 +655,21 @@ public class Var {
                 if (!value.equals(Double.NaN)) {
                     double d = Math.round(value);
                     int setIndex = v_label_codes.indexOf(value);
+                    
                     if (setIndex >= 0) {
                         Double val = distr.get(setIndex);
                         distr.set(setIndex, val + 1);
+                      
                         match.add(kkk);
+                         if(!isMissingValue(value))
+                            {
+                                Double val_v = valid_distr.get(setIndex);
+                                valid_distr.set(setIndex, val_v + 1);
+        //                        Double val = distr.get(distr.size()-1);
+        //                        distr.set(distr.size()-1, val + 1);
+                            }
                     }
+                   
                 }
                 kkk++;
             }
@@ -604,6 +677,7 @@ public class Var {
 
         if (dto_calcing_for != null) {
             dto_calcing_for.setDistribution(distr);
+            dto_calcing_for.setValid_distribution(valid_distr);
             if (dto_calcing_for instanceof RealVarDTO_Detailed) {
                 ((RealVarDTO_Detailed) dto_calcing_for).setFiltered_cortage(filtered);
             }
@@ -618,7 +692,7 @@ public class Var {
                 ((VarDTO_Detailed) dto_calcing_for).setNumber_of_records(filtered.size());
             }
         }
-        return distr;
+        return new PairDistr(distr,valid_distr);
     }
 
     public static ArrayList<Double> calc2DDistribution(long var1_id, long var2_id, UserAccountDTO watching_user,UserHistoryDTO hist_dto,EntityManager em) {
@@ -634,13 +708,18 @@ public class Var {
         //UserHistoryDTO hist_dto = new UserHistoryDTO();
 //        new UserAccount(em).updateAccountResearchState(em,watching_user);
         UserAccount acc = new UserAccount(em).getUserAccountUnsafe(watching_user.getId());
-        if (acc != null) {
-            hist_dto = UserAccount.toHistoryDTO(acc,watching_user.getCurrent_research(),em);
-            weight_var_id = hist_dto.getCurrent_research().getWeights_var_id();
-            weights_use = hist_dto.getCurrent_research().getWeights_use();
-            filters_use = hist_dto.getCurrent_research().getFilters_use();
-            filters_usage = hist_dto.getCurrent_research().getFilters_usage();
-            filters = hist_dto.getCurrent_research().getFiltersToProcess();
+        //hard-cored admin exclusion.
+        if (acc == null || (acc != null && !acc.getAccountType().equals("researchAdmin"))) {
+            if(hist_dto == null && acc != null)
+                hist_dto = UserAccount.toHistoryDTO(acc,watching_user.getCurrent_research(),em);
+            if(hist_dto!=null){
+                weight_var_id = hist_dto.getCurrent_research().getWeights_var_id();
+                weights_use = hist_dto.getCurrent_research().getWeights_use();
+                filters_use = hist_dto.getCurrent_research().getFilters_use();
+                filters_usage = hist_dto.getCurrent_research().getFilters_usage();
+                filters = hist_dto.getCurrent_research().getFiltersToProcess();
+            }
+            
 
         }
 
@@ -693,7 +772,7 @@ public class Var {
 
 
         //watching_user.setFilters(new ArrayList<String>());
-         hist_dto.getCurrent_research().setFilters(new ArrayList<String>());
+        // hist_dto.getCurrent_research().setFilters(new ArrayList<String>());
         //REMOVE THIS UPPER STRING LATER!!!
          
         filters = hist_dto.getCurrent_research().getFilters();
@@ -709,7 +788,7 @@ public class Var {
             filters_usage.add((Integer) 1);
             //watching_user.setFilters_usage(usage, dsVar1.getResearch_id());
 
-            distrib_per_alternative = dsVar1.calcDistribution(hist_dto,watching_user, null, em);
+            distrib_per_alternative = dsVar1.calcDistribution(hist_dto,watching_user, null, em).distr;
             for (Double d : distrib_per_alternative) {
                 distr.add(d);
             }
@@ -727,7 +806,9 @@ public class Var {
             //here adding filters, calculating distrib and then restoring filters and weights in original state. 
         }
           hist_dto.getCurrent_research().setFilters_use(filters_use_initial);
+          hist_dto.getCurrent_research().setFilters_usage(initial_filters_usage);
         
+          
         //watching_user.setFilters_use(filters_use_initial);
         //watching_user.setFilters_usage(initial_filters_usage, dsVar1.getResearch_id());
         
@@ -780,4 +861,51 @@ public class Var {
     public void setGeneralized_var_ids(ArrayList<Long> generalized_var_ids) {
         this.generalized_var_ids = generalized_var_ids;
     }
+
+    /**
+     * @return the missing1
+     */
+    public String getMissing1() {
+        return missing1;
+    }
+
+    /**
+     * @param missing1 the missing1 to set
+     */
+    public void setMissing1(String missing1) {
+        this.missing1 = missing1;
+    }
+
+    /**
+     * @return the missing2
+     */
+    public String getMissing2() {
+        return missing2;
+    }
+
+    /**
+     * @param missing2 the missing2 to set
+     */
+    public void setMissing2(String missing2) {
+        this.missing2 = missing2;
+    }
+
+    /**
+     * @return the missing3
+     */
+    public String getMissing3() {
+        return missing3;
+    }
+
+    /**
+     * @param missing3 the missing3 to set
+     */
+    public void setMissing3(String missing3) {
+        this.missing3 = missing3;
+    }
+
+    /**
+     * @return the missing_code
+     */
+    
 }

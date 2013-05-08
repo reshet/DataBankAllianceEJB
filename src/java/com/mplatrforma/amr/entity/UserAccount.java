@@ -39,7 +39,8 @@ import javax.persistence.*;
 @Table(name = "USERACCOUNT")
 @NamedQueries({
     @NamedQuery(name = "UserAccount.getDefUser", query = "SELECT x FROM UserAccount x WHERE x.emailAddress = :email AND x.accountType = :type AND x.password = :pswd"),
-    @NamedQuery(name = "UserAccount.getAccount", query = "SELECT x FROM UserAccount x WHERE x.emailAddress = :email AND x.password = :pswd")
+    @NamedQuery(name = "UserAccount.getAccount", query = "SELECT x FROM UserAccount x WHERE x.emailAddress = :email AND x.password = :pswd"),
+     @NamedQuery(name = "UserAccount.findUser", query = "SELECT x FROM UserAccount x WHERE x.emailAddress = :email")
 
 })
 public class UserAccount implements Serializable{
@@ -99,13 +100,14 @@ public class UserAccount implements Serializable{
 	}
         return account;
   }
-  public UserAccount getUserAccountUnsafe(Long id)
+   public UserAccount findUserAccount(String email)
   {
        UserAccount account=null;
-        if(!id.equals(0))
 	try
 	{
-		account = em.find(UserAccount.class, id);
+		TypedQuery<UserAccount> q = em.createNamedQuery("UserAccount.findUser",UserAccount.class);
+		q.setParameter("email",email);
+                account = q.getSingleResult();
 		
 	}
         catch(Exception e)
@@ -116,6 +118,30 @@ public class UserAccount implements Serializable{
 	{
 		//em.close();
 	}
+        return account;
+  }
+  public UserAccount getUserAccountUnsafe(Long id)
+  {
+       UserAccount account=null;
+        if(!id.equals(0)){
+            try
+            {
+                    account = em.find(UserAccount.class, id);
+
+            }
+            catch(Exception e)
+            {
+                e.printStackTrace();
+            }
+            finally
+            {
+                    //em.close();
+            }
+        }else {
+            //account = new UserAccount();
+            //account.setAccountType("simpleUser");
+        }
+        
         return account;
   }
 
@@ -129,23 +155,32 @@ public class UserAccount implements Serializable{
     
     String defaultEmail = "default@user.com";
     
-    UserAccount oneResult = null, detached = null;
-    Query q = em.createNamedQuery("UserAccount.getDefUser");
-    q.setParameter("email", defaultEmail);
-    q.setParameter("type", "simpleUser");
-    q.setParameter("pswd", "default");
     
-    try {
-      oneResult = (UserAccount) q.getSingleResult();
-      if (oneResult != null) {
-      // fetch friends list before detaching
-        //oneResult.getFriends();
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    } finally {
-     // em.close();
-    }
+    UserAccount oneResult = null, detached = null;
+    
+    oneResult = new UserAccount();
+    oneResult.setAccountType("simpleUser");
+    oneResult.setEmailAddress(defaultEmail);
+    oneResult.setPassword("pswd");
+    oneResult.setName("Посетитель");
+    
+//    Query q = em.createNamedQuery("UserAccount.getDefUser");
+//    q.setParameter("email", defaultEmail);
+//    q.setParameter("type", "simpleUser");
+//    q.setParameter("pswd", "default");
+//    
+//    try {
+//      oneResult = (UserAccount) q.getSingleResult();
+//      if (oneResult != null) {
+//      // fetch friends list before detaching
+//        //oneResult.getFriends();
+//      }
+//    } catch (Exception e) {
+//      e.printStackTrace();
+//    } finally {
+//     // em.close();
+//    }
+    
     return oneResult;
   }
   
@@ -359,7 +394,7 @@ public class UserAccount implements Serializable{
       return null;
     }
     UserAccountDTO dto = new UserAccountDTO(user.getEmailAddress(), user.getName(), user.getAccountType());
-    dto.setId(user.getId());
+    dto.setId(user.getId()==null?0:user.getId());
   //    dto.setFilters(user.history.getFilters());
   //  dto.setWeights_use(user.history.getWeights_use());
   // dto.setFilters_use(user.history.getFilters_use());

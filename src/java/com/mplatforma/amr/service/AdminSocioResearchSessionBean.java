@@ -21,10 +21,7 @@ import com.mresearch.databank.jobs.ParseSpssJob;
 import com.mresearch.databank.shared.*;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.PostConstruct;
@@ -33,6 +30,7 @@ import javax.annotation.Resource;
 import javax.ejb.EJB;
 import javax.ejb.Stateless;
 import javax.jms.*;
+import javax.jms.Queue;
 import javax.jws.WebService;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
@@ -48,16 +46,16 @@ import org.apache.lucene.morphology.russian.RussianLuceneMorphology;
 @Stateless(mappedName="AdminSocioResearchRemoteBean",name="AdminSocioResearchRemoteBean")
 public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemote{
 
-    static
-    {
-         Locale locale = Locale.getDefault();
-           System.out.println("Before setting, Locale is = " + locale);
-         locale = new Locale("ru","RU");
-        //  // Setting default locale  
-        // // locale = Locale.ITALY;
-         Locale.setDefault(locale);
-          System.out.println("After setting, Locale is = " + locale);
-    }
+//    static
+//    {
+//         Locale locale = Locale.getDefault();
+//           System.out.println("Before setting, Locale is = " + locale);
+//         locale = new Locale("ru","RU");
+//        //  // Setting default locale  
+//        // // locale = Locale.ITALY;
+//         Locale.setDefault(locale);
+//          System.out.println("After setting, Locale is = " + locale);
+//    }
     
     private static final JsonFormatter JSON_FORMATTER = new CompactJsonFormatter();
     private static final JdomParser JDOM_PARSER = new JdomParser();
@@ -879,7 +877,7 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
          return query;
      }
      
-     private ArrayList<Long> doParseLikewiseSearchResult(VarDTO_Detailed origin_var, ComparativeSearchParamsDTO params,String result,double min_score)
+     private ArrayList<Long> doParseLikewiseSearchResult(VarDTO_Detailed origin_var, ComparativeSearchParamsDTO params,String result,double variance)
      {  
          ArrayList<Long> var_ids = new ArrayList<Long>();
         
@@ -896,6 +894,11 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
             BigDecimal totalRoyalties = asBigDecimal(hits.getNumberValue("total"));
             Integer tot = totalRoyalties.intValue();
             
+            BigDecimal max_sc = asBigDecimal(hits.getNumberValue("max_score"));
+            Double max_score = max_sc.doubleValue();
+            
+            Double score_barrier = max_score/variance;
+            
             //JSONArray hits_arr = (JSONArray)hits.getJSONArray("hits");
            // if(hiters.isEmpty())
            // {
@@ -903,17 +906,22 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
                         //display.getCenterPanel().add(new HTML("<H2>По вашему запросу ничего не найдено. Попробуйте изменить параметры поиска</H2>"));
                     //return;
            // }
+            
+            Set<Long> ids_no_clones = new TreeSet<Long>();
             for (int i = 0; i < hiters.size(); i++)
             {
                 JsonNode hit = (JsonNode)hiters.get(i);
                 BigDecimal varid = asBigDecimal(hit.getNode("_source").getNumberValue("sociovar_ID"));
-                Long ivarid = varid.longValue();
+                long ivarid = varid.longValue();
                 
                 BigDecimal sc = asBigDecimal(hit.getNumberValue("_score"));
                 Double score = sc.doubleValue();
-                if(score >= min_score) var_ids.add(ivarid);
+                if(score >= score_barrier && origin_var.getId()!=ivarid)ids_no_clones.add(ivarid);
             }
-
+            
+            for(Long id:ids_no_clones){
+                var_ids.add(id);
+            }
             
         } catch (InvalidSyntaxException ex) {
             Logger.getLogger(AdminSocioResearchSessionBean.class.getName()).log(Level.SEVERE, null, ex);
@@ -926,7 +934,7 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
         String query = constructSearchLikewiseQuery(origin_var, params); 
         String [] types = new String[]{"sociovar"};
         String result = user_bean.doIndexSearchMaxResults(query, types,20);
-        ArrayList<Long> var_ids = doParseLikewiseSearchResult(origin_var, params, result,1.0);
+        ArrayList<Long> var_ids = doParseLikewiseSearchResult(origin_var, params, result,params.getBarrier_variance());
         return var_ids;   
      }
 

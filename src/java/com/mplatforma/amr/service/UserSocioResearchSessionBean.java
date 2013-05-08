@@ -42,6 +42,18 @@ import org.elasticsearch.search.sort.SortOrder;
 @WebService
 @Stateless(mappedName="UserSocioResearchRemoteBean",name="UserSocioResearchRemoteBean")
 public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote{
+    
+//     static
+//    {
+//         Locale locale = Locale.getDefault();
+//           System.out.println("Before setting, Locale is = " + locale);
+//         locale = new Locale("ru","RU");
+//        //  // Setting default locale  
+//        // // locale = Locale.ITALY;
+//         Locale.setDefault(locale);
+//          System.out.println("After setting, Locale is = " + locale);
+//    }
+     
     @PersistenceContext
     private EntityManager em; 
     //@EJB 
@@ -357,23 +369,23 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
              
         
         try {
-            QueryBuilder qb = termQuery("value", "superradio");
-            QueryBuilder qb1 = termQuery("name", "kimchy");
-
-            QueryBuilder qb2 = boolQuery()
-                        .must(termQuery("content", "test1"))
-                        .must(termQuery("content", "test4"))
-                        .mustNot(termQuery("content", "test2"))
-                        .should(termQuery("content", "test3"));
-
-            QueryBuilder qb3 = filteredQuery(
-                termQuery("name.first", "shay"), 
-                rangeFilter("age")
-                    .from(23)
-                    .to(54)
-                    .includeLower(true)
-                    .includeUpper(false)
-                );
+//            QueryBuilder qb = termQuery("value", "superradio");
+//            QueryBuilder qb1 = termQuery("name", "kimchy");
+//
+//            QueryBuilder qb2 = boolQuery()
+//                        .must(termQuery("content", "test1"))
+//                        .must(termQuery("content", "test4"))
+//                        .mustNot(termQuery("content", "test2"))
+//                        .should(termQuery("content", "test3"));
+//
+//            QueryBuilder qb3 = filteredQuery(
+//                termQuery("name.first", "shay"), 
+//                rangeFilter("age")
+//                    .from(23)
+//                    .to(54)
+//                    .includeLower(true)
+//                    .includeUpper(false)
+//                );
     
             
             Client client = node.client();
@@ -414,7 +426,8 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
         }
         catch(Exception ex)
         {
-            ex.printStackTrace();
+           // ex.printStackTrace();
+            Logger.getLogger(UserSocioResearchSessionBean.class.getName()).log(Level.INFO, "SearchAnswerException:{0}", ex.getMessage());
             return "Error: "+ ex.getMessage();
         }
         finally{
@@ -825,12 +838,15 @@ public class UserSocioResearchSessionBean implements UserSocioResearchBeanRemote
        ArrayList<VarDTO_Research> map = new ArrayList<VarDTO_Research>();
        for(Long k:keys)
        {
-        Var v = em.find(Var.class, k);
-         v.setEM(em);
-         VarDTO_Detailed dto =  v.toDTO_Detailed(null,null,em);   
-         map.add(new VarDTO_Research(dto.getId(),dto.getResearch_id().intValue(), dto.getResearch_name()));
+            Var v = em.find(Var.class, k);
+            if(v!=null)
+            {
+                    v.setEM(em);
+                    VarDTO_Detailed dto =  v.toDTO_Detailed(null,null,em);   
+                    map.add(new VarDTO_Research(dto.getId(),dto.getResearch_id().intValue(), dto.getResearch_name()));
+            }
        }
-        return map;
+       return map;
     }
 
     @Override

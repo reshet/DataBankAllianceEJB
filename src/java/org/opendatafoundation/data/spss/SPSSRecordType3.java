@@ -30,6 +30,7 @@ package org.opendatafoundation.data.spss;
  */
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -100,5 +101,38 @@ public class SPSSRecordType3 extends SPSSAbstractRecordType {
            str += "\n "+SPSSUtils.byte8ToDouble(value)+"="+label;
         }
         return(str);
+    }
+
+    public ArrayList<Double> getVLabelCodes()
+    {
+    	ArrayList<Double> codes = new ArrayList<Double>();
+    	@SuppressWarnings("rawtypes")
+		Iterator iter = valueLabel.entrySet().iterator();
+          while(iter.hasNext()) {
+             @SuppressWarnings("rawtypes")
+			Map.Entry entry = (Map.Entry)iter.next();
+             byte[] value = (byte[]) entry.getKey();
+             //String label = (String) entry.getValue();
+             Double key = org.opendatafoundation.data.mod.SPSSUtils.byte8ToDouble(value);
+             codes.add(key);
+          }
+      return codes;
+    }
+    // IS IT CONSISTENT OR SAFE????????????
+    public ArrayList<String> getVLabelValues()
+    {
+    	ArrayList<String> values = new ArrayList<String>();
+    	@SuppressWarnings("rawtypes")
+		Iterator iter = valueLabel.entrySet().iterator();
+          while(iter.hasNext()) {
+             @SuppressWarnings("rawtypes")
+			Map.Entry entry = (Map.Entry)iter.next();
+             @SuppressWarnings("unused")
+			byte[] value = (byte[]) entry.getKey();
+             String label = (String) entry.getValue();
+             //Double key = SPSSUtils.byte8ToDouble(value);
+             values.add(label);
+          }
+      return values;
     }
 }

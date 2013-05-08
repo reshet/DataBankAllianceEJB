@@ -23,6 +23,7 @@ import java.util.ArrayList;
 
 import com.mresearch.databank.shared.UserAccountDTO;
 import com.mresearch.databank.shared.UserAnalysisSaveDTO;
+import com.mresearch.databank.shared.UserAnalysisSaveDTO.User2DD_Choice;
 import com.mresearch.databank.shared.UserHistoryDTO;
 import java.io.Serializable;
 import java.util.Date;
@@ -56,17 +57,29 @@ public class UserMassiveLocalAnalisys implements Serializable{
     @OneToOne(cascade = CascadeType.PERSIST)
     private UserMassiveLocalSetting setting;
     private ArrayList<Double> distribution;
+    private ArrayList<Double> distribution_valid;
     private String distr_type;
     private String name;
     private String comment;
+    private String user2dd_choice = USER_2DD_FREQ;
+    
+    @Transient
+    public static String USER_2DD_FREQ = "fr";
+    @Transient
+    public static String USER_2DD_PERC_COL = "pc";
+    @Transient
+    public static String USER_2DD_PERC_ROW = "pr";
+    @Transient
+    public static String USER_2DD_PERC_TABLE = "pt";
+    
      @Temporal(TemporalType.TIMESTAMP)
     private Date date_saved;
     
     
    
-    @ManyToOne
+    @ManyToOne(cascade={CascadeType.ALL})
     private Var var_involved_first;
-    @ManyToOne
+    @ManyToOne(cascade={CascadeType.ALL})
     private Var var_involved_second;
     
     
@@ -78,8 +91,16 @@ public class UserMassiveLocalAnalisys implements Serializable{
     public UserMassiveLocalAnalisys(UserAnalysisSaveDTO dto,EntityManager em) {
         setting = new UserMassiveLocalSetting(dto.getSeting());
         distribution = dto.getDistribution();
+        distribution_valid = dto.getValid_distribution();
         distr_type = dto.getDistr_type();
         name = dto.getName();
+        
+        switch(dto.getUser2dd_choice()){
+            case FREQ:user2dd_choice = USER_2DD_FREQ; break;
+            case PERC_COL:user2dd_choice = USER_2DD_PERC_COL; break;
+            case PERC_ROW:user2dd_choice = USER_2DD_PERC_ROW; break;
+            case PERC_ALL:user2dd_choice = USER_2DD_PERC_TABLE; break;
+        }
         if(dto.getVar_1()!=null)
         {
             long var_id_1 = dto.getVar_1().getId();
@@ -105,9 +126,16 @@ public class UserMassiveLocalAnalisys implements Serializable{
       UserAnalysisSaveDTO dto = new UserAnalysisSaveDTO();
       dto.setId(id);
       dto.setDistribution(distribution);
+      dto.setValid_distribution(distribution_valid);
       dto.setDistr_type(distr_type);
       dto.setSeting(setting.toDTO(em));
       dto.setName(name);
+      
+      if(user2dd_choice.equals(USER_2DD_FREQ))dto.setUser2dd_choice(User2DD_Choice.FREQ);
+      else if(user2dd_choice.equals(USER_2DD_PERC_COL))dto.setUser2dd_choice(User2DD_Choice.PERC_COL);
+      else if(user2dd_choice.equals(USER_2DD_PERC_ROW))dto.setUser2dd_choice(User2DD_Choice.PERC_ROW);
+      else if(user2dd_choice.equals(USER_2DD_PERC_TABLE))dto.setUser2dd_choice(User2DD_Choice.PERC_ALL);
+      
       if(var_involved_first != null)dto.setVar_1(var_involved_first.toDTO_DetailedNoCalc(em));
       if(var_involved_second != null)dto.setVar_2(var_involved_second.toDTO_DetailedNoCalc(em));
       

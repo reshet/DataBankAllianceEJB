@@ -8,15 +8,23 @@ import com.mplatforma.amr.service.remote.AdminPubBeanRemote;
 import com.mplatforma.amr.service.remote.UserAccountBeanRemote;
 import com.mplatrforma.amr.entity.*;
 import com.mresearch.databank.shared.*;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
+import java.net.URLConnection;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.ejb.EJB;
 import javax.ejb.Stateless;
 import javax.jws.WebService;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
+import org.codehaus.jackson.JsonFactory;
+import org.codehaus.jackson.JsonParseException;
+import org.codehaus.jackson.JsonParser;
+import org.codehaus.jackson.JsonToken;
 
 /**
  *
@@ -29,6 +37,17 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
      //    (mappedName="UserSocioResearchRemoteBean",
         //    lookup="java:global/DatabankEnterprise-ejb/UserSocioResearchRemoteBean") 
     
+//     static
+//    {
+//         Locale locale = Locale.getDefault();
+//           System.out.println("Before setting, Locale is = " + locale);
+//         locale = new Locale("ru","RU");
+//        //  // Setting default locale  
+//        // // locale = Locale.ITALY;
+//         Locale.setDefault(locale);
+//          System.out.println("After setting, Locale is = " + locale);
+//    }
+//    
     @PersistenceContext
     private EntityManager em;
     
@@ -49,22 +68,114 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
        //createDefaultDatabankVarStructure();
        //  createDefaultDatabankVarStructure();
        //createDefaultDatabankLawStructure();
-       // initDefaults();
+       //    initDefaults();
        // createDefaultStartPage();
        // script();
        return UserAccount.toDTO(new UserAccount(em).getUserAccount(email, password));
     } 
     @Override
+    public UserAccountDTO getUserAccountOrRegisterByOAuthToken(String token) {
+        LoginInfo info = loginDetails(token);
+        
+        
+        String email = info.email;
+        String name = info.name;
+        UserAccount acc = new UserAccount(em).findUserAccount(email);
+        if (acc==null)acc = registerUser(email,token,"simpleUser",name);
+              
+        return UserAccount.toDTO(acc);
+    }
+    
+    private UserAccount registerUser(String email,String password,String type_access,String name){
+         UserAccount defRegUser = new UserAccount();
+	    	defRegUser.setAccountType(type_access);
+	    	defRegUser.setEmailAddress(email);
+	    	defRegUser.setPassword(password);
+                defRegUser.setName(name);
+	    	em.persist(defRegUser);
+         return em.find(UserAccount.class, defRegUser.getId());
+    }
+    private static final Logger log = Logger.getLogger(UserAccountSessionBean.class.getCanonicalName());
+    private class LoginInfo{
+        public String email="",name="";
+    }
+    
+    private LoginInfo loginDetails(final String token) {
+		String url = "https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=" + token;
+
+		final StringBuffer r = new StringBuffer();
+		try {
+			final URL u = new URL(url);
+			final URLConnection uc = u.openConnection();
+			final int end = 30000;
+			InputStreamReader isr = null;
+			BufferedReader br = null;
+			try {
+				isr = new InputStreamReader(uc.getInputStream());
+				br = new BufferedReader(isr);
+				final int chk = 0;
+				while ((url = br.readLine()) != null) {
+					if ((chk >= 0) && ((chk < end))) {
+						r.append(url).append('\n');
+					}
+				}
+			} catch (final java.net.ConnectException cex) {
+				r.append(cex.getMessage());
+			} catch (final Exception ex) {
+				log.log(Level.SEVERE, ex.getMessage());
+			} finally {
+				try {
+					br.close();
+				} catch (final Exception ex) {
+					log.log(Level.SEVERE, ex.getMessage());
+				}
+			}
+		} catch (final Exception e) {
+			log.log(Level.SEVERE, e.getMessage());
+		}
+
+		final LoginInfo loginInfo = new LoginInfo();
+		try {
+			final JsonFactory f = new JsonFactory();
+			JsonParser jp;
+			jp = f.createJsonParser(r.toString());
+			jp.nextToken();
+			while (jp.nextToken() != JsonToken.END_OBJECT) {
+				final String fieldname = jp.getCurrentName();
+				jp.nextToken();
+//				if ("picture".equals(fieldname)) {
+//					loginInfo.setPictureUrl(jp.getText());
+//				} else 
+//                                    
+                                if ("name".equals(fieldname)) {
+					loginInfo.name = jp.getText();
+				} else if ("email".equals(fieldname)) {
+					loginInfo.email = jp.getText();
+				}
+			}
+		} catch (final JsonParseException e) {
+			log.log(Level.SEVERE, e.getMessage());
+		} catch (final IOException e) {
+			log.log(Level.SEVERE, e.getMessage());
+		}
+		return loginInfo;
+	}
+
+    @Override
     public void initDefaults() {
         
+        
+        
         System.out.println("Initing defaults!");
-        new UserAccount(em).createDefaults();
-        createDefaultDatabankStructure();
-        createDefaultDatabankVarStructure();
-        //createDefaultDatabankLawStructure();
-        createDefaultDatabankPubStructure();
-        //createDefaultDatabankJuryStructure();
-        createDefaultStartPage();
+        
+//        new UserAccount(em).createDefaults();
+//        createDefaultDatabankStructure();
+//        createDefaultDatabankVarStructure();
+//        //createDefaultDatabankLawStructure();
+//        createDefaultDatabankPubStructure();
+//        //createDefaultDatabankJuryStructure();
+//        createDefaultStartPage();
+//        
         System.out.println("Initing defaults finished!");
         
     }
@@ -292,6 +403,7 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
           em.persist(db);
           
           int b = 2;
+          
       }
 
       private void createDefaultDatabankJuryStructure()
@@ -399,7 +511,7 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
          UserAccount acc = new UserAccount(em).getUserAccountUnsafe(user_id);
          if(acc!=null)
          {
-             List<UserMassiveLocalSetting> list = acc.getHistory().getLocal_research_settings();
+             List<UserMassiveLocalSetting> list = acc.getHistory().getFavouriteMassives();
             for(UserMassiveLocalSetting setting:list)
             {
                 long id = setting.getResearch_id();
@@ -427,15 +539,7 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
             if(hist!= null)
             {
                 UserMassiveLocalSetting setting = new UserMassiveLocalSetting(dto);
-                boolean found = false;
-                for(UserMassiveLocalSetting sett:hist.getLocal_research_settings())
-                {
-                    if(sett.getResearch_id().equals(setting.getResearch_id())){
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found)hist.getLocal_research_settings().add(setting);
+                hist.addToFavouriteMassives(setting);
                 em.persist(hist);
             }
          }
@@ -496,5 +600,7 @@ public class UserAccountSessionBean implements UserAccountBeanRemote{
        return null;
        // throw new UnsupportedOperationException("Not supported yet.");
     }
+
+  
     
 }

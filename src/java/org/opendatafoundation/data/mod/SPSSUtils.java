@@ -29,8 +29,11 @@ package org.opendatafoundation.data.mod;
  * 
  */
 
+import java.io.UnsupportedEncodingException;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Various utility functions
@@ -55,6 +58,17 @@ public class SPSSUtils {
                 ((long)(buffer[2]&0xFF)  << 16)  +
                 ((long)(buffer[1]&0xFF)  << 8)   +
                  (long)(buffer[0]&0xFF));
+        
+        
+//        long lvalue2 = (
+//                ((long) (buffer[7]) << 56) + 
+//                ((long) (buffer[6] & 0xFF) << 48) + 
+//                ((long) (buffer[5] & 0xFF) << 40) + 
+//                ((long) (buffer[4] & 0xFF) << 32) + 
+//                ((long) (buffer[3] & 0xFF) << 24) + 
+//                ((long) (buffer[2] & 0xFF) << 16) + 
+//                ((long) (buffer[1] & 0xFF) << 8) + 
+//                (long) (buffer[0] & 0xFF));
         return(Double.longBitsToDouble(lvalue));
     }
 
@@ -65,8 +79,16 @@ public class SPSSUtils {
      * @return converted value as String
      */
     public static String byte8ToString(byte[] buffer) {
-        String str = new String(buffer).replaceAll("\\s+$", "");
-        return(str);
+        try {
+            String str = new String(buffer,"UTF-8");
+            str = str.replaceAll("\\s+$", "");
+            return(str);
+        } catch (UnsupportedEncodingException ex) {
+            Logger.getLogger(SPSSUtils.class.getName()).log(Level.SEVERE, null, ex);
+        }
+           String str = new String(buffer);
+            str = str.replaceAll("\\s+$", "");
+            return(str);
     }
     
     /**

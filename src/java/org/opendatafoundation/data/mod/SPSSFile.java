@@ -1149,7 +1149,7 @@ public class SPSSFile
         SPSSDataRecord data = new SPSSDataRecord();
         this.seek(this.dataStartPosition);
         for(int i=0; i<infoRecord.numberOfCases; i++) {
-            //log("\nRECORD "+(i+1)+" offset "+this.getFilePointer());
+            log("\nRECORD "+(i+1)+" offset "+this.getFilePointer());
             data.read(this);
         }
         this.isDataLoaded = true;

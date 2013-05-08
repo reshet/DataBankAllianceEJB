@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <jax-ws xmlns="http://www.netbeans.org/ns/jax-ws/1">
   <services>
-    <service name="AmrBean">
-      <implementation-class>com.mplatforma.amr.service.AmrBean</implementation-class>
-    </service>
     <service name="UserAccountSessionBean">
       <implementation-class>com.mplatforma.amr.service.UserAccountSessionBean</implementation-class>
     </service>
@@ -24,9 +21,6 @@
     </service>
     <service name="AdminJurySessionBean">
       <implementation-class>com.mplatforma.amr.service.AdminJurySessionBean</implementation-class>
-    </service>
-    <service name="ManageDBWebService">
-      <implementation-class>com.mresearch.databank.manage.ManageDBWebService</implementation-class>
     </service>
   </services>
   <clients>

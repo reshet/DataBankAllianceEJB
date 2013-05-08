@@ -1,3 +1,4 @@
+
 /** 
  * Copyright 2010 Daniel Guermeur and Amy Unruh
  *
@@ -25,12 +26,16 @@ import java.util.ArrayList;
 
 
 
-public class UserAnalysisSaveDTO implements Serializable {
+
+
+public class UserAnalysisSaveDTO implements Serializable, ICatalogizable {
 
   /**
 	 * 
 	 */
-    
+	public static enum User2DD_Choice {FREQ,PERC_ROW,PERC_COL,PERC_ALL}; 
+	private User2DD_Choice user2dd_choice = User2DD_Choice.FREQ;
+	
   public static String DISTR_TYPE_1D = "1D";
   public static String DISTR_TYPE_2D = "2D";   
 	private static final long serialVersionUID = 4066887588027126691L;
@@ -41,6 +46,17 @@ public class UserAnalysisSaveDTO implements Serializable {
   private VarDTO_Detailed var_1;
   private VarDTO_Detailed var_2;
   private ArrayList<Double> distribution;
+  
+    private ArrayList<Double> valid_distribution;
+  
+  
+  public ArrayList<Double> getValid_distribution() {
+	return valid_distribution;
+}
+
+public void setValid_distribution(ArrayList<Double> valid_distribution) {
+	this.valid_distribution = valid_distribution;
+}
   
   public UserAnalysisSaveDTO() {
   
@@ -80,7 +96,7 @@ public class UserAnalysisSaveDTO implements Serializable {
     /**
      * @return the var_1
      */
-    public VarDTO getVar_1() {
+    public VarDTO_Detailed getVar_1() {
         return var_1;
     }
 
@@ -94,7 +110,7 @@ public class UserAnalysisSaveDTO implements Serializable {
     /**
      * @return the var_2
      */
-    public VarDTO getVar_2() {
+    public VarDTO_Detailed getVar_2() {
         return var_2;
     }
 
@@ -146,6 +162,26 @@ public class UserAnalysisSaveDTO implements Serializable {
     public void setDistr_type(String distr_type) {
         this.distr_type = distr_type;
     }
+
+	@Override
+	public String getTextRepresent() {
+		// TODO Auto-generated method stub
+		return name;
+	}
+
+	@Override
+	public long getID() {
+		// TODO Auto-generated method stub
+		return id;
+	}
+
+	public User2DD_Choice getUser2dd_choice() {
+		return user2dd_choice;
+	}
+
+	public void setUser2dd_choice(User2DD_Choice user2dd_choice) {
+		this.user2dd_choice = user2dd_choice;
+	}
 	
 
 }

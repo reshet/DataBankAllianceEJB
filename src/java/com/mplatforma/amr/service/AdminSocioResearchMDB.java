@@ -21,6 +21,8 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
+import java.util.Locale;
 import javax.annotation.Resource;
 import javax.ejb.ActivationConfigProperty;
 import javax.ejb.EJB;
@@ -31,13 +33,15 @@ import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
 import org.elasticsearch.action.bulk.BulkResponse;
-import org.opendatafoundation.data.FileFormatInfo;
-import org.opendatafoundation.data.FileFormatInfo.Format;
+
+//import org.opendatafoundation.data.FileFormatInfo;
+//import org.opendatafoundation.data.FileFormatInfo.Format;
 import org.opendatafoundation.data.mod.SPSSFile;
 import org.opendatafoundation.data.mod.SPSSFileException;
 import org.opendatafoundation.data.mod.SPSSNumericVariable;
 import org.opendatafoundation.data.mod.SPSSStringVariable;
 import org.opendatafoundation.data.mod.SPSSVariable;
+
 import org.w3c.dom.Document;
 import org.elasticsearch.action.index.IndexResponse;
 import static org.elasticsearch.common.xcontent.XContentFactory.*;
@@ -45,6 +49,14 @@ import org.elasticsearch.node.Node;
 
 import static org.elasticsearch.node.NodeBuilder.*;
 import org.mozilla.universalchardet.UniversalDetector;
+import org.opendatafoundation.data.FileFormatInfo;
+import org.opendatafoundation.data.FileFormatInfo.Format;
+//import org.opendatafoundation.data.mod2.SPSSNumericVariable;
+//import org.opendatafoundation.data.mod2.SPSSStringVariable;
+//import org.opendatafoundation.data.mod2.SPSSVariable;
+//import org.opendatafoundation.data.mod2.SPSSFile;
+//import org.opendatafoundation.data.mod2.SPSSFileException;
+//import org.opendatafoundation.data.spss.*;
 
 /**
  *
@@ -57,10 +69,19 @@ import org.mozilla.universalchardet.UniversalDetector;
 })
 public class AdminSocioResearchMDB implements MessageListener {
 
+//    static {
+//        Locale locale = Locale.getDefault();
+//        System.out.println("Before setting, Locale is = " + locale);
+//        locale = new Locale("ru", "RU");
+//        //  // Setting default locale  
+//        // // locale = Locale.ITALY;
+//        Locale.setDefault(locale);
+//        System.out.println("After setting, Locale is = " + locale);
+//    }
     @PersistenceContext
     private EntityManager em;
-    @Resource
-    private MessageDrivenContext mdc;
+//    @Resource
+//    private MessageDrivenContext mdc;
     @EJB
     private RxStorageBeanRemote store;
     public static String INDEX_NAME = "databankalliance";
@@ -86,7 +107,7 @@ public class AdminSocioResearchMDB implements MessageListener {
                     perform_indexing(job.getId_Research());
                 } else if (obj instanceof IndexVarJob) {
                     IndexVarJob job = (IndexVarJob) obj;
-                    VarDTO dto = U_bean.getVar(job.getId_Var(), null,null);
+                    VarDTO dto = U_bean.getVar(job.getId_Var(), null, null);
                     perform_indexing_var(dto);
                 } else if (obj instanceof IndexVarJobFast) {
                     IndexVarJobFast job = (IndexVarJobFast) obj;
@@ -123,7 +144,7 @@ public class AdminSocioResearchMDB implements MessageListener {
     QueueSender q_sender;
 
     @PostConstruct
-    private void init() {
+    public void init() {
         node = nodeBuilder().clusterName("elasticsearch_" + INDEX_NAME + "_Prj_Cluster").client(false).node();
         try {
             connection = connectionFactory.createQueueConnection();
@@ -136,7 +157,7 @@ public class AdminSocioResearchMDB implements MessageListener {
     }
 
     @PreDestroy
-    private void release() {
+    public void release() {
         node.close();
 
         try {
@@ -514,8 +535,16 @@ public class AdminSocioResearchMDB implements MessageListener {
 
     private void parseSPSS(long blobkey, long length) {
         try {
-            System.out.println("PARSE SPSS MDB, em = " + em);
-
+//            System.out.println("PARSE SPSS MDB, em = " + em);
+//
+//         
+//         Locale locale = Locale.getDefault();
+//         System.out.println("Before setting, Locale is = " + locale);
+//         locale = new Locale("ru","RU");
+//         Locale.setDefault(locale);
+//         System.out.println("After setting, Locale is = " + locale);
+    
+          
             Long socioresearch_key = null;
             byte[] arr = new byte[(int) length];
 
@@ -533,9 +562,9 @@ public class AdminSocioResearchMDB implements MessageListener {
 
             byte[] buf = new byte[4096];
             UniversalDetector detector = new UniversalDetector(null);
-
+//
             ByteArrayInputStream fis = new ByteArrayInputStream(arr);
-            // (2)
+//            // (2)
             int nread;
             while ((nread = fis.read(buf)) > 0 && !detector.isDone()) {
                 detector.handleData(buf, 0, nread);
@@ -560,27 +589,46 @@ public class AdminSocioResearchMDB implements MessageListener {
                 System.out.println("No encoding detected.");
             }
 
+            String fileName = "/home/reshet/spssfiles/" + dto.getName();
+
+//            BufferedOutputStream bs = null;
+//            File file = new File(fileName);
+//            try {
+//
+//                FileOutputStream fs = new FileOutputStream(file);
+//                bs = new BufferedOutputStream(fs);
+//                bs.write(arr);
+//                bs.close();
+//                bs = null;
+//
+//            } catch (Exception e) {
+//}
+//
+//            if (bs != null) try { bs.close(); } catch (Exception e) {}
+//            
 
             SPSSFile s = new SPSSFile(arr);
             String st = s.getDDI3DefaultPhysicalDataProductID(new FileFormatInfo(Format.SPSS));
-//            String ans = "";
-//            String answer = "";
+            String ans = "";
+            String answer = "";
 //            ans = "file_cr";
-//            ans+= "length = "+arr.length;
-//            //ans+="fetch_size = "+String.valueOf(b_serv.MAX_BLOB_FETCH_SIZE)+ " ";
+ //           ans+= "length = "+arr.length;
+            //ans+="fetch_size = "+String.valueOf(b_serv.MAX_BLOB_FETCH_SIZE)+ " ";
 //            byte [] arr_first = new byte[100];
 //            for(int i = 0; i < 100;i++)
 //            {
 //                    arr_first[i] = arr[i];
 //            }
 //            ans+=new String(arr_first);
-//            //s.
+            //s.
             try {
                 s.setIsCP1251(isCP1251);
                 s.setIsKOI8_R(isKOI8_R);
                 s.loadMetadata();
                 //        ans+=" meta_loaded";
                 s.setIsCP1251(false);
+                s.setIsKOI8_R(false);
+                
                 s.loadData();
                 //        ans+=" data_loaded";
                 //org.w3c.dom.Document doc1 = s.getDDI3LogicalProduct();
@@ -590,15 +638,10 @@ public class AdminSocioResearchMDB implements MessageListener {
                 socioresearch_key = createEmptyResearch(dto.getName(), blobkey);
                 addSPSStoSocioResearch(socioresearch_key, s, blobkey, doc2, "");
 
-            } catch (SPSSFileException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-                //ans+=e.getMessage();
-            } catch (IOException e) {
-                // TODO Auto-generated catch block
-                //ans+=e.getMessage();
-                e.printStackTrace();
+            } catch (SPSSFileException ex) {
+                Logger.getLogger(AdminSocioResearchMDB.class.getName()).log(Level.SEVERE, null, ex);
             }
+
             //return ans+"  "+socioresearch_key + " : vars :  "+answer;
             //return socioresearch_key;
         } catch (IOException ex) {
@@ -646,10 +689,12 @@ public class AdminSocioResearchMDB implements MessageListener {
             //			e.printStackTrace();
             //		}
             long s_key = createVar(s_var, socioresearch_id);
-            ans1 += s_key;
+            //ans1 += s_key;
             var_ids.add(s_key);
         }
-        perform_var_bulk_indexing();
+        
+            
+        
         SocioResearch dsResearch;
         try {
             dsResearch = em.find(SocioResearch.class, socioresearch_id);
@@ -661,8 +706,12 @@ public class AdminSocioResearchMDB implements MessageListener {
             dsResearch.getEntity_item().getMapped_values().put(SocioResearch._NAME, dsResearch.getName());
 
             em.persist(dsResearch);
+            
+           
         } finally {
+            
         }
+         perform_var_bulk_indexing();
         return ans1;
     }
 
@@ -683,7 +732,10 @@ public class AdminSocioResearchMDB implements MessageListener {
 
             String multistring = "";
             multistring += s_var.getLabel();
-//      multistring+=" :: "+new String(s_var.getLabel().getBytes("Cp1251"),"Cp1251").substring(0,s_var.getLabel().length());
+            System.out.println(multistring);
+           //  logger.log(Level.SEVERE, "this message should get logged "+multistring);//throw new IOException(doc2.getInputEncoding());
+
+            //      multistring+=" :: "+new String(s_var.getLabel().getBytes("Cp1251"),"Cp1251").substring(0,s_var.getLabel().length());
 //      multistring+=" :: "+new String(s_var.getLabel().getBytes("UTF-8"),"UTF-8").substring(0,s_var.getLabel().length());
 //      multistring+=" :: "+new String(s_var.getLabel().getBytes("Cp1251"),"UTF-8").substring(0,s_var.getLabel().length());
 //      multistring+=" :: "+new String(s_var.getLabel().getBytes("UTF-8"),"Cp1251").substring(0,s_var.getLabel().length());
@@ -744,16 +796,23 @@ public class AdminSocioResearchMDB implements MessageListener {
             ArrayList<Double> values = new ArrayList<Double>();
             //SPSS
             if (s_var instanceof SPSSNumericVariable) {
+
                 SPSSNumericVariable s_var_numeric = (SPSSNumericVariable) s_var;
-                for (Double value : s_var_numeric.data) {
+                for (Iterator<Double> it = s_var_numeric.data.iterator(); it.hasNext();) {
+                    Double value = it.next();
                     values.add(value);
                 }
             }
             var.setCortage(values);
+            
+            var.setMissing1(s_var.getMissing1());
+            var.setMissing2(s_var.getMissing2());
+            var.setMissing3(s_var.getMissing3());
+            
             //var.setV_label_map(map);
             em.persist(var);
             var_id = var.getID();
-            VarDTO ddto = var.toDTO(null,null, em);
+            VarDTO ddto = var.toDTO(null, null, em);
             launchIndexingVarBULKED(ddto);
             //launchIndexingVar(var_id);
 //     }  catch (UnsupportedEncodingException ex) {
@@ -762,6 +821,8 @@ public class AdminSocioResearchMDB implements MessageListener {
             // testDDI3work();
         } finally {
         }
-        return var_id;
+        
+         return var_id;
+        //return var_id;
     }
 }
