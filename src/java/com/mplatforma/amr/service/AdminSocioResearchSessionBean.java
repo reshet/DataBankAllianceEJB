@@ -130,6 +130,7 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
                 
               research = em.find(SocioResearch.class, rDTO.getId());
               research.updateFromDTO(rDTO,em);
+              em.persist(research);
 //              addSSE("SocioResearch","gengeath", rDTO.getGen_geathering());
 //              addSSE("SocioResearch","method", rDTO.getMethod());
 //              ArrayList<String> concepts = rDTO.getConcepts();

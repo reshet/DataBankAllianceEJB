@@ -44,6 +44,7 @@ import org.opendatafoundation.data.mod.SPSSVariable;
 
 import org.w3c.dom.Document;
 import org.elasticsearch.action.index.IndexResponse;
+import org.elasticsearch.common.xcontent.XContentBuilder;
 import static org.elasticsearch.common.xcontent.XContentFactory.*;
 import org.elasticsearch.node.Node;
 
@@ -107,7 +108,7 @@ public class AdminSocioResearchMDB implements MessageListener {
                     perform_indexing(job.getId_Research());
                 } else if (obj instanceof IndexVarJob) {
                     IndexVarJob job = (IndexVarJob) obj;
-                    VarDTO dto = U_bean.getVar(job.getId_Var(), null, null);
+                    VarDTO_Detailed dto = U_bean.getVarDetailed(job.getId_Var(), null, null);
                     perform_indexing_var(dto);
                 } else if (obj instanceof IndexVarJobFast) {
                     IndexVarJobFast job = (IndexVarJobFast) obj;
@@ -260,11 +261,13 @@ public class AdminSocioResearchMDB implements MessageListener {
                     ).execute().actionGet();
 
             Logger.getLogger(UserSocioResearchSessionBean.class.getName()).log(Level.INFO, "IndexQueryDoc:" + dto.getJson_descriptor());
+            Logger.getLogger(UserSocioResearchSessionBean.class.getName()).log(Level.INFO, "IndexResponse:"+response.toString());
+                Logger.getLogger(UserSocioResearchSessionBean.class.getName()).log(Level.INFO, "IndexResponse2:"+response.index()+" "+response.id()+" "+response.getVersion()+" "+response.getMatches());
 //            GetResponse response2 = client.prepareGet("twitter", "tweet", "1")
 //                 .execute()
 //                 .actionGet();
 
-            System.out.println(response.toString());
+            //System.out.println(response.toString());
 
         } catch (Exception ex) {
             Logger.getLogger(ES_indexing_Bean.class.getName()).log(Level.SEVERE, null, ex);
@@ -289,9 +292,9 @@ public class AdminSocioResearchMDB implements MessageListener {
             ex.printStackTrace();
         }
     }
-    private ArrayList<VarDTO> vars_waiting_indexing;
+    private ArrayList<VarDTO_Detailed> vars_waiting_indexing;
 
-    private void launchIndexingVarBULKED(VarDTO dto) {
+    private void launchIndexingVarBULKED(VarDTO_Detailed dto) {
         vars_waiting_indexing.add(dto);
     }
 
@@ -300,7 +303,7 @@ public class AdminSocioResearchMDB implements MessageListener {
             if (vars_waiting_indexing != null) {
                 Client client = node.client();
                 BulkRequestBuilder bulkRequest = client.prepareBulk();
-                for (VarDTO dto : vars_waiting_indexing) {
+                for (VarDTO_Detailed dto : vars_waiting_indexing) {
                     bulkRequest.add(client.prepareIndex(INDEX_NAME, "sociovar", String.valueOf(dto.getId())).setSource(generateVarJSONDesc(dto)));
                 }
                 BulkResponse resp = bulkRequest.execute().actionGet();
@@ -317,14 +320,24 @@ public class AdminSocioResearchMDB implements MessageListener {
 
     }
 
-    private String generateVarJSONDesc(VarDTO dto) {
+    private String generateVarJSONDesc(VarDTO_Detailed dto) {
         String json = "";
         if (dto != null) {
             try {
 
                 String[] empt = new String[0];
-
-                json = jsonBuilder().startObject().field("sociovar_ID", dto.getId() == 0 ? "" : dto.getId()).field("sociovar_code", dto.getCode() == null ? "" : dto.getCode()).field("sociovar_name", dto.getLabel() == null ? "" : dto.getLabel()).array("sociovar_alt_codes", dto.getV_label_codes() == null ? empt : dto.getV_label_codes().toArray()).array("sociovar_alt_values", dto.getV_label_values() == null ? empt : dto.getV_label_values().toArray()).endObject().string();
+                    XContentBuilder bld = jsonBuilder().startObject();
+               // json = jsonBuilder().startObject()
+                        bld.field("sociovar_ID", dto.getId() == 0 ? "" : dto.getId())
+                        .field("sociovar_code", dto.getCode() == null ? "" : dto.getCode())
+                        .field("sociovar_name", dto.getLabel() == null ? "" : dto.getLabel())
+                        .array("sociovar_alt_codes", dto.getV_label_codes() == null ? empt : dto.getV_label_codes().toArray())
+                        .array("sociovar_alt_values", dto.getV_label_values() == null ? empt : dto.getV_label_values().toArray());
+                  for(String key:dto.getFilling().keySet())
+                  {
+                      bld.field(key,dto.getFilling().get(key));
+                  }
+                  json = bld.endObject().string();
 
                 return json;
             } catch (IOException ex) {
@@ -334,7 +347,7 @@ public class AdminSocioResearchMDB implements MessageListener {
         return json;
     }
 
-    private void perform_indexing_var(VarDTO dto) {
+    private void perform_indexing_var(VarDTO_Detailed dto) {
 
 
         //SocioResearchDTO dto = new SocioResearchDTO();
@@ -362,14 +375,16 @@ public class AdminSocioResearchMDB implements MessageListener {
 //                      )
 //            .execute()
 //            .actionGet();
-
-            IndexResponse response = client.prepareIndex(INDEX_NAME, "sociovar", String.valueOf(dto.getId())).setSource(generateVarJSONDesc(dto)).execute().actionGet();
+            String jsondesc = generateVarJSONDesc(dto);
+            IndexResponse response = client.prepareIndex(INDEX_NAME, "sociovar", String.valueOf(dto.getId())).setSource(jsondesc).execute().actionGet();
 
 //            GetResponse response2 = client.prepareGet("twitter", "tweet", "1")
 //                 .execute()
 //                 .actionGet();
-
-            System.out.println(response.index());
+             Logger.getLogger(UserSocioResearchSessionBean.class.getName()).log(Level.INFO, "IndexQueryDoc:" + jsondesc);
+            Logger.getLogger(UserSocioResearchSessionBean.class.getName()).log(Level.INFO, "IndexResponse:"+response.toString());
+                Logger.getLogger(UserSocioResearchSessionBean.class.getName()).log(Level.INFO, "IndexResponse2:"+response.index()+" "+response.id()+" "+response.getVersion()+" "+response.getMatches());
+            //System.out.println(response.index());
 
         } catch (Exception ex) {
             Logger.getLogger(ES_indexing_Bean.class.getName()).log(Level.SEVERE, null, ex);
@@ -672,7 +687,7 @@ public class AdminSocioResearchMDB implements MessageListener {
     private String addSPSStoSocioResearch(long socioresearch_id, SPSSFile spss, long spss_blobkey, Document doc, String ans) {
         String ans1 = "";
         ArrayList<Long> var_ids = new ArrayList<Long>();
-        vars_waiting_indexing = new ArrayList<VarDTO>(100);
+        vars_waiting_indexing = new ArrayList<VarDTO_Detailed>(100);
         for (int i = 0; i < spss.getVariableCount(); i++) {
             System.out.println(i);
             SPSSVariable s_var = spss.getVariable(i);
@@ -812,7 +827,7 @@ public class AdminSocioResearchMDB implements MessageListener {
             //var.setV_label_map(map);
             em.persist(var);
             var_id = var.getID();
-            VarDTO ddto = var.toDTO(null, null, em);
+            VarDTO_Detailed ddto = var.toDTO_Detailed(null, null, em);
             launchIndexingVarBULKED(ddto);
             //launchIndexingVar(var_id);
 //     }  catch (UnsupportedEncodingException ex) {
