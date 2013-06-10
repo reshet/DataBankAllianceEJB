@@ -613,8 +613,8 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
         MetaUnitEntityItem item = em.find(MetaUnitEntityItem.class,id);
         MetaUnitMultivaluedEntity ent = em.find(MetaUnitMultivaluedEntity.class, entity_id);
         ent.getItems().remove(item);
-        em.persist(ent);
         em.remove(item);
+        em.persist(ent);
     }
 
     

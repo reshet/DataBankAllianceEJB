@@ -35,9 +35,13 @@ public class MetaUnitEntityItem implements Serializable {
     private String v_value;
     private HashMap<String,String> mapped_values;
     
-    @OneToMany(cascade= CascadeType.ALL)
+    @OneToMany(mappedBy="parent_item",cascade= CascadeType.ALL,orphanRemoval=true)
     private Collection<MetaUnitEntityItem> subitems;
     
+    @ManyToOne(cascade= CascadeType.REMOVE) 
+    private  MetaUnitEntityItem parent_item;
+            
+            
     @OrderColumn
     private List<Long> tagged_entities_ids;
     @OrderColumn
