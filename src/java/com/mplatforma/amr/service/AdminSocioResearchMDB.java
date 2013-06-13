@@ -19,16 +19,14 @@ import com.mresearch.databank.shared.*;
 import java.io.*;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.Locale;
+import java.util.*;
 import javax.annotation.Resource;
 import javax.ejb.ActivationConfigProperty;
 import javax.ejb.EJB;
 import javax.ejb.MessageDriven;
 import javax.ejb.MessageDrivenContext;
 import javax.jms.*;
+import javax.jms.Queue;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import org.elasticsearch.action.bulk.BulkRequestBuilder;
@@ -786,11 +784,30 @@ public class AdminSocioResearchMDB implements MessageListener {
             var.setCode(new String(s_var.getName()));
             var.setLabel(multistring);
             if (s_var.valueLabelRecord != null) {
-                var.setVar_type(VarDTO_Detailed.alt_var_type);
                 ArrayList<String> labels_encoding = s_var.valueLabelRecord.getVLabelValues();
+                
+                Set<String> missing_codes = new HashSet<String>();
+                missing_codes.add(s_var.getMissing1());
+                missing_codes.add(s_var.getMissing2());
+                missing_codes.add(s_var.getMissing3());
+                
+                
+                int missings_count = 0;
                 for (int i = 0; i < labels_encoding.size(); i++) {
                     //  labels_encoding.set(i, new String(labels_encoding.get(i).getBytes("CP1251"),"UTF-8"));
                     labels_encoding.set(i, new String(labels_encoding.get(i)));
+                    if(missing_codes.contains(String.valueOf(
+                        s_var.valueLabelRecord.getVLabelCodes().get(i)))
+                      )missings_count++;
+                }
+                if(missings_count < labels_encoding.size())var.setVar_type(VarDTO_Detailed.alt_var_type);
+                else{
+                     if (s_var instanceof SPSSNumericVariable) {
+                      var.setVar_type(VarDTO_Detailed.real_var_type);
+                     }
+                     if (s_var instanceof SPSSStringVariable) {
+                        var.setVar_type(VarDTO_Detailed.text_var_type);
+                     }
                 }
                 var.setV_label_codes(s_var.valueLabelRecord.getVLabelCodes());
                 var.setV_label_values(labels_encoding);

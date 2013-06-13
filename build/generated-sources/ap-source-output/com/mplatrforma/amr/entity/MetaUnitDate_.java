@@ -3,7 +3,7 @@ package com.mplatrforma.amr.entity;
 import javax.annotation.Generated;
 import javax.persistence.metamodel.StaticMetamodel;
 
-@Generated(value="EclipseLink-2.3.0.v20110604-r9504", date="2013-06-10T18:27:19")
+@Generated(value="EclipseLink-2.3.0.v20110604-r9504", date="2013-06-13T23:12:50")
 @StaticMetamodel(MetaUnitDate.class)
 public class MetaUnitDate_ extends MetaUnit_ {
 

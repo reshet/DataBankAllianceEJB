@@ -532,7 +532,7 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
     }
     
     @Override
-    public Boolean addMetaUnit(long parent_id, MetaUnitDTO dto) {
+    public MetaUnitDTO addMetaUnit(long parent_id, MetaUnitDTO dto) {
         MetaUnitMultivalued unit;
         MetaUnit new_unit = null;
         if(dto instanceof MetaUnitDateDTO){new_unit = new MetaUnitDate();new_unit.updateFromDTO(dto);}
@@ -548,7 +548,9 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
             unit = em.find(MetaUnitMultivalued.class, parent_id);    
             unit.getSub_meta_units().add(new_unit);
             em.persist(unit);
-            return true;
+            em.persist(new_unit);
+            em.flush();
+            return new_unit.toDTO();
         }
         finally
         {
@@ -589,9 +591,9 @@ public class AdminSocioResearchSessionBean implements AdminSocioResearchBeanRemo
         MetaUnitMultivalued punit;
         try
         {
-            unit = em.find(MetaUnit.class, id);    
+            unit = em.find(MetaUnit.class, id); 
             punit = em.find(MetaUnitMultivalued.class, unit_parent_id);
-            punit.getSub_meta_units().remove(unit);
+            if(punit!=null)punit.getSub_meta_units().remove(unit);
             em.persist(punit);
             em.remove(unit);
         }
